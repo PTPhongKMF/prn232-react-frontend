@@ -56,7 +56,7 @@ export default function Login() {
         <p className="self-end text-red-500 font-semibold text-sm max-h-20 overflow-auto">
           {handleLogin.isError && handleLogin.error.message}
           {handleLogin.isSuccess && (
-            <p className="text-green-500">đăng nhập thành công</p>
+            <span className="text-green-500">đăng nhập thành công</span>
           )}
         </p>
 
