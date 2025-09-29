@@ -1,6 +1,6 @@
 
 export default function Home() {
   return (
-    <div>Đây là trang HOME</div>
+    <div>This is the HOME page</div>
   )
 }
