@@ -1,6 +1,7 @@
 import { Loader2Icon, LockKeyhole, Mail } from "lucide-react";
 import { useState } from "react";
-import { Input } from "src/components/shadcn/input";
+import { Link } from "react-router";
+import { Input } from "src/components/libs/shadcn/input";
 import { useLoginMutation } from "src/hooks/useAuth";
 
 export default function Login() {
