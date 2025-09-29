@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router";
 import { useRegisterMutation } from "src/hooks/useAuth";
 import { Input } from "src/components/shadcn/input";
 import { User, Mail, LockKeyhole, GraduationCap, Loader2Icon } from "lucide-react";
@@ -38,7 +38,7 @@ export default function Register() {
       >
         {/* Header */}
         <div className="flex flex-col items-center justify-center self-start">
-          <h3 className="mb-8 text-4xl font-semibold">Tạo tài khoản</h3>
+          <h3 className="mb-8 text-4xl font-semibold">Create Account</h3>
 
           {/* Input Fields */}
           <div className="flex w-full flex-col items-center justify-center gap-6 px-2">
@@ -46,7 +46,7 @@ export default function Register() {
               <User />
               <Input
                 type="text"
-                placeholder="Họ và tên"
+                placeholder="Full Name"
                 value={registerData.name}
                 onChange={(e) => setRegisterData({ ...registerData, name: e.target.value })}
                 className="focus-visible:ring-1 bg-gray-50"
@@ -68,7 +68,7 @@ export default function Register() {
               <LockKeyhole />
               <Input
                 type="password"
-                placeholder="Mật khẩu"
+                placeholder="Password"
                 value={registerData.password}
                 onChange={(e) => setRegisterData({ ...registerData, password: e.target.value })}
                 className="focus-visible:ring-1 bg-gray-50"
@@ -79,7 +79,7 @@ export default function Register() {
               <GraduationCap />
               <Input
                 type="number"
-                placeholder="Lớp (Ví dụ: 7)"
+                placeholder="Grade (Example: 7)"
                 value={registerData.grade}
                 onChange={(e) => setRegisterData({ ...registerData, grade: e.target.value })}
                 className="focus-visible:ring-1 bg-gray-50"
@@ -94,7 +94,7 @@ export default function Register() {
         <p className="mt-4 self-end overflow-auto text-sm font-semibold text-red-500 max-h-14">
           {handleRegister.isError && handleRegister.error.message}
           {handleRegister.isSuccess && (
-            <span className="text-green-500">Đăng ký thành công! Bạn có thể đăng nhập ngay.</span>
+            <span className="text-green-500">Registration successful! You can login now.</span>
           )}
         </p>
 
@@ -106,17 +106,17 @@ export default function Register() {
         >
           {handleRegister.isPending ? (
             <div className="flex items-center justify-center gap-4">
-              <Loader2Icon className="animate-spin" /> Đang tạo tài khoản...
+              <Loader2Icon className="animate-spin" /> Creating account...
             </div>
           ) : (
-            "Đăng ký"
+            "Register"
           )}
         </button>
         
         <p className="text-center text-sm text-gray-600">
-          Đã có tài khoản?{" "}
+          Already have an account?{" "}
           <Link to="/login" className="font-semibold text-blue-600 hover:underline">
-            Đăng nhập ngay
+            Login now
           </Link>
         </p>
       </form>
