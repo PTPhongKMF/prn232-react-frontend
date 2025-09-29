@@ -2,13 +2,7 @@ import { useState } from "react";
 import { Link, useNavigate } from "react-router";
 import { useRegisterMutation } from "src/hooks/useAuth";
 import { Input } from "src/components/libs/shadcn/input";
-import {
-  User,
-  Mail,
-  LockKeyhole,
-  GraduationCap,
-  Loader2Icon,
-} from "lucide-react";
+import { User, Mail, LockKeyhole, GraduationCap, Loader2Icon } from "lucide-react";
 
 export default function Register() {
   const [registerData, setRegisterData] = useState({
@@ -23,9 +17,7 @@ export default function Register() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    const gradeAsNumber = registerData.grade
-      ? parseInt(registerData.grade, 10)
-      : undefined;
+    const gradeAsNumber = registerData.grade ? parseInt(registerData.grade, 10) : undefined;
 
     handleRegister.mutate(
       { ...registerData, grade: gradeAsNumber },
@@ -56,9 +48,7 @@ export default function Register() {
                 type="text"
                 placeholder="Full Name"
                 value={registerData.name}
-                onChange={(e) =>
-                  setRegisterData({ ...registerData, name: e.target.value })
-                }
+                onChange={(e) => setRegisterData({ ...registerData, name: e.target.value })}
                 className="focus-visible:ring-1 bg-gray-50"
               />
             </div>
@@ -69,9 +59,7 @@ export default function Register() {
                 type="email"
                 placeholder="Email"
                 value={registerData.email}
-                onChange={(e) =>
-                  setRegisterData({ ...registerData, email: e.target.value })
-                }
+                onChange={(e) => setRegisterData({ ...registerData, email: e.target.value })}
                 className="focus-visible:ring-1 bg-gray-50"
               />
             </div>
@@ -82,9 +70,7 @@ export default function Register() {
                 type="password"
                 placeholder="Password"
                 value={registerData.password}
-                onChange={(e) =>
-                  setRegisterData({ ...registerData, password: e.target.value })
-                }
+                onChange={(e) => setRegisterData({ ...registerData, password: e.target.value })}
                 className="focus-visible:ring-1 bg-gray-50"
               />
             </div>
@@ -95,9 +81,7 @@ export default function Register() {
                 type="number"
                 placeholder="Grade (Example: 7)"
                 value={registerData.grade}
-                onChange={(e) =>
-                  setRegisterData({ ...registerData, grade: e.target.value })
-                }
+                onChange={(e) => setRegisterData({ ...registerData, grade: e.target.value })}
                 className="focus-visible:ring-1 bg-gray-50"
                 min="1"
                 max="12"
@@ -110,9 +94,7 @@ export default function Register() {
         <p className="mt-4 self-end overflow-auto text-sm font-semibold text-red-500 max-h-14">
           {handleRegister.isError && handleRegister.error.message}
           {handleRegister.isSuccess && (
-            <span className="text-green-500">
-              Registration successful! You can login now.
-            </span>
+            <span className="text-green-500">Registration successful! You can login now.</span>
           )}
         </p>
 
@@ -133,10 +115,7 @@ export default function Register() {
 
         <p className="text-center text-sm text-gray-600">
           Already have an account?{" "}
-          <Link
-            to="/login"
-            className="font-semibold text-blue-600 hover:underline"
-          >
+          <Link to="/login" className="font-semibold text-blue-600 hover:underline">
             Login now
           </Link>
         </p>
