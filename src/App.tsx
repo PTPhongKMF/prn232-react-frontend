@@ -10,7 +10,7 @@ function App() {
       <Route element={<SiteLayout />}>
         <Route index element={<Home />} />
         <Route path="login" element={<Login />} />
-        <Route path="register" element={<Register />} /> 
+        <Route path="register" element={<Register />} />
       </Route>
     </Routes>
   );

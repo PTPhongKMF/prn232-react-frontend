@@ -15,7 +15,10 @@ export default function NavBar() {
   return (
     <header className="fixed top-0 left-0 z-50 w-full bg-amber-50/80 backdrop-blur-sm shadow-sm">
       <nav className="container mx-auto flex h-16 items-center justify-between px-6">
-        <Link to="/" className="flex items-center gap-2 text-xl font-bold text-gray-800">
+        <Link
+          to="/"
+          className="flex items-center gap-2 text-xl font-bold text-gray-800"
+        >
           <Plane className="text-blue-600" />
           <span>Mathslide</span>
         </Link>
@@ -24,10 +27,10 @@ export default function NavBar() {
           {user ? (
             <>
               {/* This part will no longer cause an error */}
-              <span className="font-semibold text-gray-700">Welcome, {user.name}!</span>
-              <button
-                className="rounded-lg bg-red-500 px-4 py-2 font-semibold text-white shadow-md transition-transform active:scale-95 hover:scale-95 hover:shadow-sm"
-              >
+              <span className="font-semibold text-gray-700">
+                Welcome, {user.name}!
+              </span>
+              <button className="rounded-lg bg-red-500 px-4 py-2 font-semibold text-white shadow-md transition-transform active:scale-95 hover:scale-95 hover:shadow-sm">
                 Logout
               </button>
             </>

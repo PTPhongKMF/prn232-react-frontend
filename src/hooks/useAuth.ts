@@ -53,13 +53,19 @@ export function useLoginMutation() {
 
 // 1. Define the shape and validation rules for registration data
 const RegisterSchema = v.object({
-  name: v.pipe(v.string(), v.minLength(2, "Name must be at least 2 characters.")),
+  name: v.pipe(
+    v.string(),
+    v.minLength(2, "Name must be at least 2 characters."),
+  ),
   email: v.pipe(
     v.string(),
     v.minLength(1, "Email is required."),
     v.email("Invalid email format."),
   ),
-  password: v.pipe(v.string(), v.minLength(6, "Password must be at least 6 characters.")),
+  password: v.pipe(
+    v.string(),
+    v.minLength(6, "Password must be at least 6 characters."),
+  ),
   grade: v.optional(v.pipe(v.number(), v.minValue(1), v.maxValue(12))),
 });
 
