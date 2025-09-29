@@ -4,14 +4,13 @@ import { kyAspDotnet } from "src/services/ApiService";
 import { FailApiResponseSchema } from "src/types/response";
 import * as v from "valibot";
 
-// --- Login Schema and Mutation (Existing Code) ---
 const LoginSchema = v.object({
   email: v.pipe(
     v.string(),
-    v.minLength(1, "Email không được để trống"),
-    v.email("Email không hợp lệ"),
+    v.minLength(1, "Email is required"),
+    v.email("Invalid email format"),
   ),
-  password: v.pipe(v.string(), v.minLength(1, "Mật khẩu không được để trống")),
+  password: v.pipe(v.string(), v.minLength(1, "Password is required")),
 });
 
 type LoginData = v.InferOutput<typeof LoginSchema>;
@@ -33,7 +32,7 @@ export function useLoginMutation() {
                 const errorResponse = v.parse(
                   FailApiResponseSchema,
                   errorBody,
-                  { message: "Lỗi không xác định." },
+                  { message: "An unknown error occurred." },
                 );
                 error.message = errorResponse.message;
                 return error;
@@ -54,13 +53,13 @@ export function useLoginMutation() {
 
 // 1. Define the shape and validation rules for registration data
 const RegisterSchema = v.object({
-  name: v.pipe(v.string(), v.minLength(2, "Tên phải có ít nhất 2 ký tự.")),
+  name: v.pipe(v.string(), v.minLength(2, "Name must be at least 2 characters.")),
   email: v.pipe(
     v.string(),
-    v.minLength(1, "Email không được để trống."),
-    v.email("Email không hợp lệ."),
+    v.minLength(1, "Email is required."),
+    v.email("Invalid email format."),
   ),
-  password: v.pipe(v.string(), v.minLength(6, "Mật khẩu phải có ít nhất 6 ký tự.")),
+  password: v.pipe(v.string(), v.minLength(6, "Password must be at least 6 characters.")),
   grade: v.optional(v.pipe(v.number(), v.minValue(1), v.maxValue(12))),
 });
 
@@ -84,7 +83,7 @@ export function useRegisterMutation() {
                 const errorResponse = v.parse(
                   FailApiResponseSchema,
                   errorBody,
-                  { message: "Lỗi đăng ký không xác định." },
+                  { message: "An unknown registration error occurred." },
                 );
                 error.message = errorResponse.message;
                 return error;

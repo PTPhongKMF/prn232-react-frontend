@@ -10,7 +10,6 @@ function App() {
       <Route element={<SiteLayout />}>
         <Route index element={<Home />} />
         <Route path="login" element={<Login />} />
-        {/* 2. Add the new route below */}
         <Route path="register" element={<Register />} /> 
       </Route>
     </Routes>
