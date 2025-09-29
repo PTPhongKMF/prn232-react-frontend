@@ -33,9 +33,7 @@ export default function Login() {
                 type="email"
                 placeholder="Email"
                 value={loginData.email}
-                onChange={(e) =>
-                  setLoginData({ ...loginData, email: e.target.value })
-                }
+                onChange={(e) => setLoginData({ ...loginData, email: e.target.value })}
               />
             </div>
 
@@ -46,9 +44,7 @@ export default function Login() {
                 type="password"
                 placeholder="Password"
                 value={loginData.password}
-                onChange={(e) =>
-                  setLoginData({ ...loginData, password: e.target.value })
-                }
+                onChange={(e) => setLoginData({ ...loginData, password: e.target.value })}
               />
             </div>
           </div>
@@ -56,9 +52,7 @@ export default function Login() {
 
         <p className="self-end text-red-500 font-semibold text-sm max-h-20 overflow-auto">
           {handleLogin.isError && handleLogin.error.message}
-          {handleLogin.isSuccess && (
-            <span className="text-green-500">Login successful</span>
-          )}
+          {handleLogin.isSuccess && <span className="text-green-500">Login successful</span>}
         </p>
 
         <button
@@ -80,10 +74,7 @@ export default function Login() {
 
         <p className="text-center text-sm text-gray-600">
           Don't have an account yet?{" "}
-          <Link
-            to="/register"
-            className="font-semibold text-blue-600 hover:underline"
-          >
+          <Link to="/register" className="font-semibold text-blue-600 hover:underline">
             Register now
           </Link>
         </p>
