@@ -26,7 +26,6 @@ export default function NavBar() {
         <div className="flex items-center gap-6">
           {user ? (
             <>
-              {/* This part will no longer cause an error */}
               <span className="font-semibold text-gray-700">
                 Welcome, {user.name}!
               </span>
