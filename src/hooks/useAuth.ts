@@ -90,7 +90,7 @@ export function useLoginMutation() {
     },
     onSuccess: (data) => {
       setUser(data.data.user);
-      Cookies.set("token", data.data.token);
+      Cookies.set("token", data.data.token, { expires: 1 });
     },
     onError: (error) => {
       console.error("Login failed:", error);
