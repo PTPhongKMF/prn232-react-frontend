@@ -15,11 +15,3 @@ export function ApiErrorResponseSchema<TSchema extends v.GenericSchema>(dataSche
     data: v.nullable(dataSchema),
   });
 }
-
-export type ApiSuccessResponse<TSchema extends v.GenericSchema> = v.InferOutput<
-  ReturnType<typeof ApiSuccessResponseSchema<TSchema>>
->;
-
-export type ApiErrorResponse<TSchema extends v.GenericSchema> = v.InferOutput<
-  ReturnType<typeof ApiErrorResponseSchema<TSchema>>
->;
