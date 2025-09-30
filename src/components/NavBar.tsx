@@ -29,11 +29,23 @@ export default function NavBar() {
         </Link>
 
         <div className="flex items-center gap-6">
+          <Link
+            to="/slides"
+            className="hidden font-medium text-gray-600 transition-colors hover:text-blue-600 md:block"
+          >
+            Slides
+          </Link>
+          <Link to="/exams" className="hidden font-medium text-gray-600 transition-colors hover:text-blue-600 md:block">
+            Exams
+          </Link>
+
+          <div className="h-5 w-0.5 bg-black" />
+
           {isSuccess && user ? (
             <div className="relative">
               <button
                 onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-                className="flex items-center gap-2 font-semibold text-gray-700"
+                className="flex items-center gap-2 font-semibold text-gray-700 cursor-pointer"
               >
                 <UserCircle className="text-blue-600" />
                 <span>Welcome, {user.name}!</span>
@@ -61,7 +73,7 @@ export default function NavBar() {
                     )}
                     <button
                       onClick={handleLogout}
-                      className="flex w-full items-center px-4 py-2 text-left text-sm text-red-600 hover:bg-gray-100"
+                      className="flex w-full items-center px-4 py-2 text-left text-sm text-red-600 hover:bg-gray-100 cursor-pointer"
                     >
                       <LogOut className="mr-2 h-4 w-4" />
                       Logout
@@ -72,24 +84,6 @@ export default function NavBar() {
             </div>
           ) : (
             <>
-              <Link
-                to="/features"
-                className="hidden font-medium text-gray-600 transition-colors hover:text-blue-600 md:block"
-              >
-                Features
-              </Link>
-              <Link
-                to="/pricing"
-                className="hidden font-medium text-gray-600 transition-colors hover:text-blue-600 md:block"
-              >
-                Pricing
-              </Link>
-              <Link
-                to="/contact"
-                className="hidden font-medium text-gray-600 transition-colors hover:text-blue-600 md:block"
-              >
-                Contact
-              </Link>
               <Link to="/login" className="font-semibold text-gray-600 transition-colors hover:text-blue-600">
                 Login
               </Link>
