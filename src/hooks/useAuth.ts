@@ -12,7 +12,7 @@ import {
   type RegisterData,
   type UpdateUserData,
 } from "src/types/account/auth";
-import { ApiErrorResponseSchema, ApiSuccessResponseSchema } from "src/types/genericApiResponse";
+import { createApiErrorResponseSchema, createApiSuccessResponseSchema } from "src/types/genericApiResponse";
 import * as v from "valibot";
 import { Cookies } from "typescript-cookie";
 import { useUser } from "src/stores/userStore";
@@ -32,7 +32,7 @@ export function useProfile() {
     queryKey: ["profile"],
     queryFn: async () => {
       const response = await kyAspDotnet.get("api/Accounts/profile").json();
-      const parsed = v.parse(ApiSuccessResponseSchema(v.any()), response);
+      const parsed = v.parse(createApiSuccessResponseSchema(v.any()), response);
       return parsed.data as User;
     },
     enabled: !!token,
@@ -50,7 +50,7 @@ export function useUpdateProfileMutation() {
           json: validatedUserData,
         })
         .json();
-      const parsed = v.parse(ApiSuccessResponseSchema(v.any()), response);
+      const parsed = v.parse(createApiSuccessResponseSchema(v.any()), response);
       return parsed.data as User;
     },
     onSuccess: () => {
@@ -106,7 +106,7 @@ export function useRegisterMutation() {
             beforeError: [
               async (error) => {
                 const errorBody = await error.response.json();
-                const errorResponse = v.parse(ApiSuccessResponseSchema(v.unknown()), errorBody);
+                const errorResponse = v.parse(createApiSuccessResponseSchema(v.unknown()), errorBody);
                 error.message = errorResponse.message ?? "An unknown error occurred.";
                 return error;
               },

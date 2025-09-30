@@ -1,5 +1,5 @@
 import { UserSchema } from "src/types/account/user";
-import { ApiErrorResponseSchema, ApiSuccessResponseSchema } from "src/types/genericApiResponse";
+import { createApiErrorResponseSchema, createApiSuccessResponseSchema } from "src/types/genericApiResponse";
 import * as v from "valibot";
 
 export const LoginSchema = v.object({
@@ -12,8 +12,8 @@ export const LoginResponseSchema = v.object({
   token: v.pipe(v.string(), v.nonEmpty()),
 });
 
-export const LoginSuccessResponseSchema = ApiSuccessResponseSchema(LoginResponseSchema);
-export const LoginErrorResponseSchema = ApiErrorResponseSchema(LoginResponseSchema);
+export const LoginSuccessResponseSchema = createApiSuccessResponseSchema(LoginResponseSchema);
+export const LoginErrorResponseSchema = createApiErrorResponseSchema(LoginResponseSchema);
 
 export const RegisterSchema = v.object({
   name: v.pipe(v.string(), v.minLength(2, "Name must be at least 2 characters.")),

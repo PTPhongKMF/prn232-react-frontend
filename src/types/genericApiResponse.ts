@@ -1,6 +1,6 @@
 import * as v from "valibot";
 
-export function ApiSuccessResponseSchema<TSchema extends v.GenericSchema>(dataSchema: TSchema) {
+export function createApiSuccessResponseSchema<TSchema extends v.GenericSchema>(dataSchema: TSchema) {
   return v.object({
     statusCode: v.number(),
     message: v.nullable(v.string()),
@@ -8,7 +8,7 @@ export function ApiSuccessResponseSchema<TSchema extends v.GenericSchema>(dataSc
   });
 }
 
-export function ApiErrorResponseSchema<TSchema extends v.GenericSchema>(dataSchema: TSchema) {
+export function createApiErrorResponseSchema<TSchema extends v.GenericSchema>(dataSchema: TSchema) {
   return v.object({
     statusCode: v.number(),
     message: v.nullable(v.string()),
