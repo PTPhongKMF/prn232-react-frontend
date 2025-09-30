@@ -17,8 +17,6 @@ export function useUsers() {
   });
 }
 
-// This hook is now defined correctly according to modern React Query standards.
-// The onSuccess/onError callbacks will be passed when we call the 'mutate' function.
 export function useUpdateUserPermissionsMutation() {
   const queryClient = useQueryClient();
   return useMutation<
@@ -35,7 +33,18 @@ export function useUpdateUserPermissionsMutation() {
       const parsed = v.parse(genericApiResponseSchema(v.any()), response);
       return parsed.data as User;
     },
-    // We invalidate the user list automatically on success
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["users"] });
+    },
+  });
+}
+
+export function useDeleteUserMutation() {
+  const queryClient = useQueryClient();
+  return useMutation<unknown, HTTPError, { userId: number }>({
+    mutationFn: async ({ userId }) => {
+      return await kyAspDotnet.delete(`api/Admin/users/${userId}`).json();
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["users"] });
     },

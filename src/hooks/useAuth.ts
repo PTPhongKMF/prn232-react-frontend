@@ -15,6 +15,7 @@ export type User = {
   grade?: number;
 };
 
+// Function to decode JWT payload
 function decodeJwt(token: string) {
   try {
     const base64Url = token.split(".")[1];
@@ -65,6 +66,18 @@ export function useUpdateProfileMutation() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["profile"] });
     },
+  });
+}
+
+export function useDeleteAccountMutation() {
+  const queryClient = useQueryClient();
+  return useMutation<unknown, HTTPError>({
+    mutationFn: async () => {
+      return await kyAspDotnet.delete("api/Accounts/profile").json();
+    },
+    onSuccess: () => {
+      queryClient.clear();
+    }
   });
 }
 
