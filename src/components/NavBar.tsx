@@ -1,16 +1,12 @@
-import { Link } from "react-router";
+import { Link } from "react-router-dom";
 import { Plane } from "lucide-react";
-
-type User = {
-  name: string;
-};
-
-const useAuth = () => {
-  return { user: null as User | null };
-};
+import { useProfile } from "src/hooks/useAuth";
+import { Cookies } from "typescript-cookie";
 
 export default function NavBar() {
-  const { user } = useAuth();
+  const { data: user, isError } = useProfile();
+
+  const isLoggedIn = !!Cookies.get("token") && !isError;
 
   return (
     <header className="fixed top-0 left-0 z-50 w-full bg-amber-50/80 backdrop-blur-sm shadow-sm">
@@ -21,10 +17,18 @@ export default function NavBar() {
         </Link>
 
         <div className="flex items-center gap-6">
-          {user ? (
+          {isLoggedIn && user ? (
             <>
-              <span className="font-semibold text-gray-700">Welcome, {user.name}!</span>
-              <button className="rounded-lg bg-red-500 px-4 py-2 font-semibold text-white shadow-md transition-transform active:scale-95 hover:scale-95 hover:shadow-sm">
+              <Link to="/profile" className="font-semibold text-gray-700">
+                Welcome, {user.name}!
+              </Link>
+              <button
+                onClick={() => {
+                  Cookies.remove("token");
+                  window.location.href = "/login";
+                }}
+                className="rounded-lg bg-red-500 px-4 py-2 font-semibold text-white shadow-md transition-transform active:scale-95 hover:scale-95 hover:shadow-sm"
+              >
                 Logout
               </button>
             </>

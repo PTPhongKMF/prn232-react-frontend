@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Link, useNavigate } from "react-router";
+import { Link, useNavigate } from "react-router-dom";
 import { useRegisterMutation } from "src/hooks/useAuth";
 import { Input } from "src/components/libs/shadcn/input";
 import { User, Mail, LockKeyhole, GraduationCap, Loader2Icon } from "lucide-react";

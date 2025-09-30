@@ -1,11 +1,12 @@
 import { Loader2Icon, LockKeyhole, Mail } from "lucide-react";
 import { useState } from "react";
-import { Link } from "react-router";
+import { Link, useNavigate } from "react-router-dom"; // Corrected import
 import { Input } from "src/components/libs/shadcn/input";
 import { useLoginMutation } from "src/hooks/useAuth";
 
 export default function Login() {
   const [loginData, setLoginData] = useState({ email: "", password: "" });
+  const navigate = useNavigate();
 
   const handleLogin = useLoginMutation();
 
@@ -19,7 +20,11 @@ export default function Login() {
         border-yellow-400 shadow-[8px_8px_0px_0px_rgba(0,0,0,0.25)]"
         onSubmit={(e) => {
           e.preventDefault();
-          handleLogin.mutate(loginData);
+          handleLogin.mutate(loginData, {
+            onSuccess: () => {
+              navigate("/");
+            },
+          });
         }}
       >
         <div className="flex flex-col justify-center items-center w-full self-start">
