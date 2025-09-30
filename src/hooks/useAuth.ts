@@ -62,7 +62,7 @@ export function useUpdateProfileMutation() {
 export function useLoginMutation() {
   const setUser = useUser((state) => state.setUser);
 
-  return useMutation<LoginSuccessResponse, LoginErrorResponse, LoginData>({
+  return useMutation<LoginSuccessResponse, HTTPError, LoginData>({
     mutationFn: async (loginData) => {
       const validatedLoginData = v.parse(LoginSchema, loginData);
       return await kyAspDotnet
@@ -74,10 +74,14 @@ export function useLoginMutation() {
           hooks: {
             beforeError: [
               async (error) => {
-                const errorBody = await error.response.json();
-                const errorResponse = v.parse(LoginErrorResponseSchema, errorBody);
-                error.message = errorResponse.message ?? "An unknown error occurred.";
-                return error;
+                try {
+                  const errorBody = await error.response.json();
+                  const errorResponse = v.parse(LoginErrorResponseSchema, errorBody);
+                  error.message = errorResponse.message;
+                  return error;
+                } catch {
+                  return error;
+                }
               },
             ],
           },
@@ -107,7 +111,7 @@ export function useRegisterMutation() {
               async (error) => {
                 const errorBody = await error.response.json();
                 const errorResponse = v.parse(createApiSuccessResponseSchema(v.unknown()), errorBody);
-                error.message = errorResponse.message ?? "An unknown error occurred.";
+                error.message = errorResponse.message;
                 return error;
               },
             ],

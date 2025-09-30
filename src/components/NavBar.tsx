@@ -5,15 +5,18 @@ import { Cookies } from "typescript-cookie";
 ``;
 import { useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
+import { useUser } from "src/stores/userStore";
 
 export default function NavBar() {
   const { data: user, isSuccess } = useProfile();
+  const setUser = useUser((state) => state.setUser);
   const queryClient = useQueryClient();
   const navigate = useNavigate();
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
 
   const handleLogout = () => {
     Cookies.remove("token");
+    setUser(null);
     queryClient.clear();
     navigate("/login");
   };
