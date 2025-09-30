@@ -18,7 +18,12 @@ export const UpdateUserSchema = v.object({
   password: v.optional(v.pipe(v.string(), v.minLength(6, "Password must be at least 6 characters."))),
 });
 
+export const AdminUpdateUserSchema = v.object({
+  role: v.picklist(["Admin", "Teacher", "Student"]),
+  grade: v.nullable(v.pipe(v.number(), v.minValue(1), v.maxValue(12))),
+});
 
 export type LoginData = v.InferOutput<typeof LoginSchema>;
 export type RegisterData = v.InferOutput<typeof RegisterSchema>;
 export type UpdateUserData = v.InferOutput<typeof UpdateUserSchema>;
+export type AdminUpdateUserData = v.InferOutput<typeof AdminUpdateUserSchema>;
