@@ -51,82 +51,106 @@ export default function Profile() {
 
   return (
     <div className="flex min-h-[100svh] items-center justify-center bg-amber-50 bg-[url(/imgs/bg/login.png)] bg-cover p-4">
-      <form
-        onSubmit={handleSubmit}
-        className="grid w-full max-w-md grid-rows-[auto_1fr_auto] items-center rounded-3xl border-2 border-yellow-400 bg-gray-50 px-6 py-8 shadow-[8px_8px_0px_0px_rgba(0,0,0,0.25)]"
-      >
-        <div className="flex flex-col items-center justify-center self-start">
-          <h3 className="mb-8 text-4xl font-semibold">Your Profile</h3>
+      <div className="w-full max-w-md rounded-2xl bg-white/80 p-8 shadow-2xl backdrop-blur-sm">
+        <form onSubmit={handleSubmit} className="flex flex-col gap-6">
+          {/* Form Header */}
+          <div className="text-center">
+            <h2 className="text-3xl font-bold text-gray-800">Edit Profile</h2>
+            <p className="mt-1 text-gray-500">Keep your account information up to date.</p>
+          </div>
 
-          <div className="flex w-full flex-col items-center justify-center gap-6 px-2">
-            <div className="flex w-full items-center justify-center gap-2">
-              <User />
-              <Input
-                type="text"
-                placeholder="Full Name"
-                value={formData.name}
-                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                className="focus-visible:ring-1 bg-gray-50"
-              />
-            </div>
-
-            <div className="flex w-full items-center justify-center gap-2">
-              <Mail />
-              <Input
-                type="email"
-                placeholder="Email"
-                value={formData.email}
-                onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                className="focus-visible:ring-1 bg-gray-50"
-              />
-            </div>
-
-            <div className="flex w-full items-center justify-center gap-2">
-              <Lock />
-              <Input
-                type="password"
-                placeholder="New Password (optional)"
-                value={formData.password}
-                onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                className="focus-visible:ring-1 bg-gray-50"
-              />
-            </div>
-             {user?.grade && (
-              <div className="flex w-full items-center justify-center gap-2">
-                <GraduationCap />
+          {/* Form Fields */}
+          <div className="space-y-4">
+            {/* Full Name Input */}
+            <div>
+              <label className="text-sm font-medium text-gray-700">Full Name</label>
+              <div className="relative mt-1">
+                <User className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
                 <Input
-                  readOnly
-                  type="number"
-                  placeholder="Grade"
-                  value={user.grade}
-                  className="focus-visible:ring-1 bg-gray-200 text-gray-500 cursor-not-allowed"
+                  type="text"
+                  placeholder="Your Full Name"
+                  value={formData.name}
+                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                  className="pl-10"
                 />
+              </div>
+            </div>
+
+            {/* Email Input */}
+            <div>
+              <label className="text-sm font-medium text-gray-700">Email Address</label>
+              <div className="relative mt-1">
+                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
+                <Input
+                  type="email"
+                  placeholder="your.email@example.com"
+                  value={formData.email}
+                  onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                  className="pl-10"
+                />
+              </div>
+            </div>
+
+            {/* New Password Input */}
+            <div>
+              <label className="text-sm font-medium text-gray-700">New Password</label>
+              <div className="relative mt-1">
+                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
+                <Input
+                  type="password"
+                  placeholder="Leave blank to keep current password"
+                  value={formData.password}
+                  onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                  className="pl-10"
+                />
+              </div>
+            </div>
+
+            {/* Grade Display (Read-only) */}
+            {user?.grade && (
+              <div>
+                <label className="text-sm font-medium text-gray-700">Grade</label>
+                <div className="relative mt-1">
+                  <GraduationCap className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
+                  <Input
+                    readOnly
+                    type="number"
+                    value={user.grade}
+                    className="pl-10 cursor-not-allowed bg-gray-100 text-gray-500"
+                  />
+                </div>
               </div>
             )}
           </div>
-        </div>
 
-        <p className="mt-4 self-end overflow-auto text-sm font-semibold text-red-500 max-h-14">
-            {updateProfileMutation.isError && updateProfileMutation.error.message}
-            {updateProfileMutation.isSuccess && (
+          {/* Form Footer: Messages and Submit Button */}
+          <div className="mt-2 text-center">
+            <p className="min-h-[1.25rem] text-sm font-semibold">
+              {updateProfileMutation.isError && (
+                <span className="text-red-500">{updateProfileMutation.error.message}</span>
+              )}
+              {updateProfileMutation.isSuccess && (
                 <span className="text-green-500">Profile updated successfully!</span>
-            )}
-        </p>
+              )}
+            </p>
 
-        <button
-          disabled={updateProfileMutation.isPending}
-          type="submit"
-          className="self-end mb-4 mt-6 w-full cursor-pointer rounded-lg bg-blue-600 px-4 py-2 font-semibold text-white shadow-md transition active:scale-95 hover:scale-95 hover:shadow-sm focus:outline-none disabled:cursor-not-allowed disabled:bg-gray-400"
-        >
-          {updateProfileMutation.isPending ? (
-            <div className="flex items-center justify-center gap-4">
-              <Loader2 className="animate-spin" /> Saving...
-            </div>
-          ) : (
-            "Save Changes"
-          )}
-        </button>
-      </form>
+            <button
+              disabled={updateProfileMutation.isPending}
+              type="submit"
+              className="mt-2 inline-flex w-full items-center justify-center rounded-lg bg-blue-600 px-4 py-2.5 font-semibold text-white shadow-sm transition-colors hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:cursor-not-allowed disabled:bg-gray-400"
+            >
+              {updateProfileMutation.isPending ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  <span>Saving...</span>
+                </>
+              ) : (
+                "Save Changes"
+              )}
+            </button>
+          </div>
+        </form>
+      </div>
     </div>
   );
 }
