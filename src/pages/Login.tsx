@@ -8,7 +8,7 @@ export default function Login() {
   const [loginData, setLoginData] = useState({ email: "", password: "" });
   const navigate = useNavigate();
 
-  const handleLogin = useLoginMutation(navigate);
+  const handleLogin = useLoginMutation();
 
   return (
     <div
@@ -20,7 +20,15 @@ export default function Login() {
         border-yellow-400 shadow-[8px_8px_0px_0px_rgba(0,0,0,0.25)]"
         onSubmit={(e) => {
           e.preventDefault();
-          handleLogin.mutate(loginData);
+          handleLogin.mutate(loginData, {
+            onSuccess: (data) => {
+              if (data.data.user.role === "Admin") {
+                navigate("/admin");
+              } else {
+                navigate("/");
+              }
+            },
+          });
         }}
       >
         <div className="flex flex-col justify-center items-center w-full self-start">
