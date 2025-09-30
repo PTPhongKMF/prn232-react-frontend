@@ -1,11 +1,22 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { HTTPError } from "ky";
 import { kyAspDotnet } from "src/services/ApiService";
-import { LoginSchema, RegisterSchema, UpdateUserSchema, type LoginData, type RegisterData, type UpdateUserData } from "src/types/auth";
-import { genericApiResponseSchema } from "src/types/genericApiResponse";
+import {
+  LoginErrorResponseSchema,
+  LoginSchema,
+  RegisterSchema,
+  UpdateUserSchema,
+  type LoginData,
+  type LoginErrorResponse,
+  type LoginSuccessResponse,
+  type RegisterData,
+  type UpdateUserData,
+} from "src/types/account/auth";
+import { createApiErrorResponseSchema, createApiSuccessResponseSchema } from "src/types/genericApiResponse";
 import * as v from "valibot";
 import { Cookies } from "typescript-cookie";
 import { type NavigateFunction } from "react-router";
+import { useUser } from "src/stores/userStore";
 
 export type User = {
   id: number;
@@ -42,7 +53,7 @@ export function useProfile() {
     queryKey: ["profile"],
     queryFn: async () => {
       const response = await kyAspDotnet.get("api/Accounts/profile").json();
-      const parsed = v.parse(genericApiResponseSchema(v.any()), response);
+      const parsed = v.parse(createApiSuccessResponseSchema(v.any()), response);
       return parsed.data as User;
     },
     enabled: !!token,
@@ -60,7 +71,7 @@ export function useUpdateProfileMutation() {
           json: validatedUserData,
         })
         .json();
-      const parsed = v.parse(genericApiResponseSchema(v.any()), response);
+      const parsed = v.parse(createApiSuccessResponseSchema(v.any()), response);
       return parsed.data as User;
     },
     onSuccess: () => {
@@ -77,14 +88,14 @@ export function useDeleteAccountMutation() {
     },
     onSuccess: () => {
       queryClient.clear();
-    }
+    },
   });
 }
 
-export function useLoginMutation(navigate: NavigateFunction) {
-  const queryClient = useQueryClient();
+export function useLoginMutation() {
+  const setUser = useUser((state) => state.setUser);
 
-  return useMutation<any, HTTPError, LoginData>({
+  return useMutation<LoginSuccessResponse, HTTPError, LoginData>({
     mutationFn: async (loginData) => {
       const validatedLoginData = v.parse(LoginSchema, loginData);
       return await kyAspDotnet
@@ -96,10 +107,14 @@ export function useLoginMutation(navigate: NavigateFunction) {
           hooks: {
             beforeError: [
               async (error) => {
-                const errorBody = await error.response.json();
-                const errorResponse = v.parse(genericApiResponseSchema(v.unknown()), errorBody);
-                error.message = errorResponse.message ?? "An unknown error occurred.";
-                return error;
+                try {
+                  const errorBody = await error.response.json();
+                  const errorResponse = v.parse(LoginErrorResponseSchema, errorBody);
+                  error.message = errorResponse.message;
+                  return error;
+                } catch {
+                  return error;
+                }
               },
             ],
           },
@@ -107,20 +122,8 @@ export function useLoginMutation(navigate: NavigateFunction) {
         .json();
     },
     onSuccess: (data) => {
-      const token = data?.data?.token;
-      if (token && typeof token === "string") {
-        Cookies.set("token", token, { expires: 1 });
-        queryClient.invalidateQueries({ queryKey: ["profile"] });
-
-        const decodedToken = decodeJwt(token);
-        const userRole = decodedToken?.["http://schemas.microsoft.com/ws/2008/06/identity/claims/role"];
-        
-        if (userRole === "Admin") {
-          navigate("/admin");
-        } else {
-          navigate("/");
-        }
-      }
+      setUser(data.data.user);
+      Cookies.set("token", data.data.token, { expires: 1 });
     },
     onError: (error) => {
       console.error("Login failed:", error);
@@ -140,8 +143,8 @@ export function useRegisterMutation() {
             beforeError: [
               async (error) => {
                 const errorBody = await error.response.json();
-                const errorResponse = v.parse(genericApiResponseSchema(v.unknown()), errorBody);
-                error.message = errorResponse.message ?? "An unknown error occurred.";
+                const errorResponse = v.parse(createApiSuccessResponseSchema(v.unknown()), errorBody);
+                error.message = errorResponse.message;
                 return error;
               },
             ],

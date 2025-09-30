@@ -8,7 +8,7 @@ export default function Login() {
   const [loginData, setLoginData] = useState({ email: "", password: "" });
   const navigate = useNavigate();
 
-  const handleLogin = useLoginMutation(navigate);
+  const handleLogin = useLoginMutation();
 
   return (
     <div
@@ -16,15 +16,23 @@ export default function Login() {
     bg-amber-50"
     >
       <form
-        className="grid grid-rows-[auto_1fr_auto] px-6 py-8 items-center bg-gray-50 h-120 w-100 rounded-3xl border-2 
+        className="grid grid-rows-[auto_1fr_auto] px-6 py-6 items-center bg-gray-50 h-120 w-100 rounded-3xl border-2 
         border-yellow-400 shadow-[8px_8px_0px_0px_rgba(0,0,0,0.25)]"
         onSubmit={(e) => {
           e.preventDefault();
-          handleLogin.mutate(loginData);
+          handleLogin.mutate(loginData, {
+            onSuccess: (data) => {
+              if (data.data.user.role === "Admin") {
+                navigate("/admin");
+              } else {
+                navigate("/");
+              }
+            },
+          });
         }}
       >
         <div className="flex flex-col justify-center items-center w-full self-start">
-          <h3 className="text-4xl font-semibold mt-10 mb-26">Login</h3>
+          <h3 className="text-4xl font-semibold mt-10 mb-22">Login</h3>
 
           <div className="flex flex-col gap-6 justify-center items-center size-full px-2">
             <div className="flex gap-2 justify-center items-center w-full">
@@ -51,14 +59,14 @@ export default function Login() {
           </div>
         </div>
 
-        <p className="self-end text-red-500 font-semibold text-sm max-h-20 overflow-auto">
+        <p className="self-end text-red-500 font-semibold text-sm max-h-14 overflow-auto">
           {handleLogin.isError && handleLogin.error.message}
           {handleLogin.isSuccess && <span className="text-green-500">Login successful</span>}
         </p>
 
         <button
           disabled={handleLogin.isPending}
-          className="mt-8 px-4 py-2 bg-blue-600 text-white font-semibold rounded-lg shadow-md 
+          className="mt-4 px-4 py-2 bg-blue-600 text-white font-semibold rounded-lg shadow-md 
              transform transition active:scale-95 hover:scale-95 
              hover:shadow-sm focus:outline-none  mb-4 cursor-pointer self-end
              disabled:bg-gray-400 disabled:cursor-not-allowed"

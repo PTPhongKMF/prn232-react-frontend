@@ -1,19 +1,18 @@
+import type { User } from "src/types/account/user";
 import { create } from "zustand";
+import { persist } from "zustand/middleware";
 
-// A basic user type definition. You can expand this as needed.
-type User = {
-  name: string;
-  email: string;
-} | null;
-
-interface UserState {
-  user: User;
-  setUser: (user: User) => void;
+interface UserStore {
+  user: User | null;
+  setUser: (newUser: User | null) => void;
 }
 
-// The 'get' parameter is removed as it was unused.
-export const useUser = create<UserState>((set) => ({
-  user: null,
-  // The setUser function now uses 'set' to update the state.
-  setUser: (newUser) => set({ user: newUser }),
-}));
+export const useUser = create<UserStore>()(
+  persist(
+    (set) => ({
+      user: null,
+      setUser: (newUser) => set({ user: newUser }),
+    }),
+    { name: "userData" },
+  ),
+);
