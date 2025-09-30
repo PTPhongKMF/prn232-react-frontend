@@ -15,6 +15,7 @@ import {
 import { createApiErrorResponseSchema, createApiSuccessResponseSchema } from "src/types/genericApiResponse";
 import * as v from "valibot";
 import { Cookies } from "typescript-cookie";
+import { type NavigateFunction } from "react-router";
 import { useUser } from "src/stores/userStore";
 
 export type User = {
@@ -24,6 +25,26 @@ export type User = {
   role: string;
   grade?: number;
 };
+
+// Function to decode JWT payload
+function decodeJwt(token: string) {
+  try {
+    const base64Url = token.split(".")[1];
+    const base64 = base64Url.replace(/-/g, "+").replace(/_/g, "/");
+    const jsonPayload = decodeURIComponent(
+      atob(base64)
+        .split("")
+        .map(function (c) {
+          return "%" + ("00" + c.charCodeAt(0).toString(16)).slice(-2);
+        })
+        .join(""),
+    );
+    return JSON.parse(jsonPayload);
+  } catch (e) {
+    console.error("Invalid token:", e);
+    return null;
+  }
+}
 
 export function useProfile() {
   const token = Cookies.get("token");
@@ -55,6 +76,18 @@ export function useUpdateProfileMutation() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["profile"] });
+    },
+  });
+}
+
+export function useDeleteAccountMutation() {
+  const queryClient = useQueryClient();
+  return useMutation<unknown, HTTPError>({
+    mutationFn: async () => {
+      return await kyAspDotnet.delete("api/Accounts/profile").json();
+    },
+    onSuccess: () => {
+      queryClient.clear();
     },
   });
 }

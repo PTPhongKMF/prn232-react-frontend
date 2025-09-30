@@ -9,7 +9,7 @@ export default function Register() {
     name: "",
     email: "",
     password: "",
-    grade: "", // Grade is handled as a string in the form
+    grade: "",
   });
 
   const navigate = useNavigate();
@@ -23,7 +23,6 @@ export default function Register() {
       { ...registerData, grade: gradeAsNumber },
       {
         onSuccess: () => {
-          // Redirect to login page on successful registration
           navigate("/login");
         },
       },
