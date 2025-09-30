@@ -7,15 +7,13 @@ import {
   RegisterSchema,
   UpdateUserSchema,
   type LoginData,
-  type LoginErrorResponse,
   type LoginSuccessResponse,
   type RegisterData,
   type UpdateUserData,
 } from "src/types/account/auth";
-import { createApiErrorResponseSchema, createApiSuccessResponseSchema } from "src/types/genericApiResponse";
+import { createApiSuccessResponseSchema } from "src/types/genericApiResponse";
 import * as v from "valibot";
 import { Cookies } from "typescript-cookie";
-import { type NavigateFunction } from "react-router";
 import { useUser } from "src/stores/userStore";
 
 export type User = {
@@ -27,24 +25,24 @@ export type User = {
 };
 
 // Function to decode JWT payload
-function decodeJwt(token: string) {
-  try {
-    const base64Url = token.split(".")[1];
-    const base64 = base64Url.replace(/-/g, "+").replace(/_/g, "/");
-    const jsonPayload = decodeURIComponent(
-      atob(base64)
-        .split("")
-        .map(function (c) {
-          return "%" + ("00" + c.charCodeAt(0).toString(16)).slice(-2);
-        })
-        .join(""),
-    );
-    return JSON.parse(jsonPayload);
-  } catch (e) {
-    console.error("Invalid token:", e);
-    return null;
-  }
-}
+// function decodeJwt(token: string) {
+//   try {
+//     const base64Url = token.split(".")[1];
+//     const base64 = base64Url.replace(/-/g, "+").replace(/_/g, "/");
+//     const jsonPayload = decodeURIComponent(
+//       atob(base64)
+//         .split("")
+//         .map(function (c) {
+//           return "%" + ("00" + c.charCodeAt(0).toString(16)).slice(-2);
+//         })
+//         .join(""),
+//     );
+//     return JSON.parse(jsonPayload);
+//   } catch (e) {
+//     console.error("Invalid token:", e);
+//     return null;
+//   }
+// }
 
 export function useProfile() {
   const token = Cookies.get("token");

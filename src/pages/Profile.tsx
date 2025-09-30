@@ -1,5 +1,5 @@
 import { useProfile, useUpdateProfileMutation, useDeleteAccountMutation } from "src/hooks/useAuth";
-import { Loader2, User, Mail, Lock, GraduationCap, CircleAlert } from "lucide-react";
+import { Loader2, User, Mail, Lock, GraduationCap } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Input } from "src/components/libs/shadcn/input";
 import DeleteConfirmationModal from "src/components/DeleteConfirmationModal";
@@ -47,7 +47,7 @@ export default function Profile() {
       },
       onError: () => {
         setDeleteModalOpen(false);
-      }
+      },
     });
   };
 
@@ -166,22 +166,22 @@ export default function Profile() {
               </div>
             </form>
 
-            {user?.role !== 'Admin' && (
+            {user?.role !== "Admin" && (
               <>
                 <div className="border-t border-gray-200"></div>
                 <div className="p-8">
-                    <h3 className="text-lg font-semibold text-red-700">Delete Account</h3>
-                    <div className="mt-4 flex items-center justify-between">
-                      <p className="text-sm text-gray-600 max-w-sm">
-                        Once your account is deleted, all of its resources and data will be permanently removed.
-                      </p>
-                      <button
-                        onClick={() => setDeleteModalOpen(true)}
-                        className="inline-flex items-center justify-center rounded-lg bg-red-600 px-4 py-2.5 font-semibold text-white shadow-sm transition-colors hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2"
-                      >
-                        Delete Account
-                      </button>
-                    </div>
+                  <h3 className="text-lg font-semibold text-red-700">Delete Account</h3>
+                  <div className="mt-4 flex items-center justify-between">
+                    <p className="text-sm text-gray-600 max-w-sm">
+                      Once your account is deleted, all of its resources and data will be permanently removed.
+                    </p>
+                    <button
+                      onClick={() => setDeleteModalOpen(true)}
+                      className="inline-flex items-center justify-center rounded-lg bg-red-600 px-4 py-2.5 font-semibold text-white shadow-sm transition-colors hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2"
+                    >
+                      Delete Account
+                    </button>
+                  </div>
                 </div>
               </>
             )}
