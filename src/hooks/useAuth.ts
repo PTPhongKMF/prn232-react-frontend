@@ -105,14 +105,13 @@ export function useLoginMutation() {
           hooks: {
             beforeError: [
               async (error) => {
-                try {
-                  const errorBody = await error.response.json();
-                  const errorResponse = v.parse(LoginErrorResponseSchema, errorBody);
-                  error.message = errorResponse.message;
-                  return error;
-                } catch {
-                  return error;
+                const errorBody = await error.response.json();
+                const parseResult = v.safeParse(LoginErrorResponseSchema, errorBody);
+
+                if (parseResult.success) {
+                  error.message = parseResult.output.message;
                 }
+                return error;
               },
             ],
           },
@@ -141,8 +140,11 @@ export function useRegisterMutation() {
             beforeError: [
               async (error) => {
                 const errorBody = await error.response.json();
-                const errorResponse = v.parse(createApiSuccessResponseSchema(v.unknown()), errorBody);
-                error.message = errorResponse.message;
+                const parseResult = v.safeParse(createApiSuccessResponseSchema(v.unknown()), errorBody);
+
+                if (parseResult.success) {
+                  error.message = parseResult.output.message;
+                }
                 return error;
               },
             ],
