@@ -1,12 +1,13 @@
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { Plane } from "lucide-react";
 import { useProfile } from "src/hooks/useAuth";
 import { Cookies } from "typescript-cookie";
+import { useQueryClient } from "@tanstack/react-query";
 
 export default function NavBar() {
-  const { data: user, isError } = useProfile();
-
-  const isLoggedIn = !!Cookies.get("token") && !isError;
+  const { data: user, isSuccess } = useProfile();
+  const queryClient = useQueryClient();
+  const navigate = useNavigate();
 
   return (
     <header className="fixed top-0 left-0 z-50 w-full bg-amber-50/80 backdrop-blur-sm shadow-sm">
@@ -17,7 +18,7 @@ export default function NavBar() {
         </Link>
 
         <div className="flex items-center gap-6">
-          {isLoggedIn && user ? (
+          {isSuccess && user ? (
             <>
               <Link to="/profile" className="font-semibold text-gray-700">
                 Welcome, {user.name}!
@@ -25,7 +26,8 @@ export default function NavBar() {
               <button
                 onClick={() => {
                   Cookies.remove("token");
-                  window.location.href = "/login";
+                  queryClient.clear();
+                  navigate("/login");
                 }}
                 className="rounded-lg bg-red-500 px-4 py-2 font-semibold text-white shadow-md transition-transform active:scale-95 hover:scale-95 hover:shadow-sm"
               >
