@@ -1,6 +1,6 @@
 import { Loader2Icon, LockKeyhole, Mail } from "lucide-react";
 import { useState } from "react";
-import { Link, useNavigate } from "react-router-dom"; // Corrected import
+import { Link, useNavigate } from "react-router";
 import { Input } from "src/components/libs/shadcn/input";
 import { useLoginMutation } from "src/hooks/useAuth";
 

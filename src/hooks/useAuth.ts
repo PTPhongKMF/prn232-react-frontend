@@ -1,10 +1,24 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { HTTPError } from "ky";
 import { kyAspDotnet } from "src/services/ApiService";
-import { LoginSchema, RegisterSchema, UpdateUserSchema, type LoginData, type RegisterData, type UpdateUserData } from "src/types/auth";
-import { genericApiResponseSchema } from "src/types/genericApiResponse";
+import {
+  LoginSchema,
+  RegisterSchema,
+  UpdateUserSchema,
+  type LoginData,
+  type RegisterData,
+  type UpdateUserData,
+} from "src/types/account/auth";
+import {
+  ApiErrorResponseSchema,
+  ApiSuccessResponseSchema,
+  type ApiErrorResponse,
+  type ApiSuccessResponse,
+} from "src/types/genericApiResponse";
 import * as v from "valibot";
 import { Cookies } from "typescript-cookie";
+import { LoginResponseSchema } from "src/types/account/user";
+import { useUser } from "src/stores/userStore";
 
 export type User = {
   id: number;
@@ -21,7 +35,7 @@ export function useProfile() {
     queryKey: ["profile"],
     queryFn: async () => {
       const response = await kyAspDotnet.get("api/Accounts/profile").json();
-      const parsed = v.parse(genericApiResponseSchema(v.any()), response);
+      const parsed = v.parse(ApiSuccessResponseSchema(v.any()), response);
       return parsed.data as User;
     },
     enabled: !!token,
@@ -39,7 +53,7 @@ export function useUpdateProfileMutation() {
           json: validatedUserData,
         })
         .json();
-      const parsed = v.parse(genericApiResponseSchema(v.any()), response);
+      const parsed = v.parse(ApiSuccessResponseSchema(v.any()), response);
       return parsed.data as User;
     },
     onSuccess: () => {
@@ -49,9 +63,13 @@ export function useUpdateProfileMutation() {
 }
 
 export function useLoginMutation() {
-  const queryClient = useQueryClient();
+  const setUser = useUser((state) => state.setUser);
 
-  return useMutation<any, HTTPError, LoginData>({
+  return useMutation<
+    ApiSuccessResponse<typeof LoginResponseSchema>,
+    ApiErrorResponse<typeof LoginResponseSchema>,
+    LoginData
+  >({
     mutationFn: async (loginData) => {
       const validatedLoginData = v.parse(LoginSchema, loginData);
       return await kyAspDotnet
@@ -64,7 +82,7 @@ export function useLoginMutation() {
             beforeError: [
               async (error) => {
                 const errorBody = await error.response.json();
-                const errorResponse = v.parse(genericApiResponseSchema(v.unknown()), errorBody);
+                const errorResponse = v.parse(ApiErrorResponseSchema(LoginResponseSchema), errorBody);
                 error.message = errorResponse.message ?? "An unknown error occurred.";
                 return error;
               },
@@ -74,11 +92,8 @@ export function useLoginMutation() {
         .json();
     },
     onSuccess: (data) => {
-      const token = data?.data?.token;
-      if (token && typeof token === "string") {
-        Cookies.set("token", token, { expires: 1 });
-        queryClient.invalidateQueries({ queryKey: ["profile"] });
-      }
+      setUser(data.data.user);
+      Cookies.set("token", data.data.token);
     },
     onError: (error) => {
       console.error("Login failed:", error);
@@ -98,7 +113,7 @@ export function useRegisterMutation() {
             beforeError: [
               async (error) => {
                 const errorBody = await error.response.json();
-                const errorResponse = v.parse(genericApiResponseSchema(v.unknown()), errorBody);
+                const errorResponse = v.parse(ApiSuccessResponseSchema(v.unknown()), errorBody);
                 error.message = errorResponse.message ?? "An unknown error occurred.";
                 return error;
               },
