@@ -1,5 +1,5 @@
 import { Link, useNavigate } from "react-router-dom";
-import { Plane, UserCircle, LogOut, LayoutDashboard, Shield } from "lucide-react";
+import { Plane, UserCircle, LogOut, LayoutDashboard } from "lucide-react";
 import { useProfile } from "src/hooks/useAuth";
 import { Cookies } from "typescript-cookie";
 import { useQueryClient } from "@tanstack/react-query";
@@ -36,7 +36,7 @@ export default function NavBar() {
                 <span>Welcome, {user.name}!</span>
               </button>
               {isDropdownOpen && (
-                <div className="absolute right-0 mt-2 w-48 rounded-md bg-white shadow-lg ring-1 ring-black ring-opacity-5">
+                <div className="absolute right-0 mt-2 w-48 rounded-md bg-white shadow-lg">
                   <div className="py-1">
                     <Link
                       to="/profile"
@@ -46,16 +46,6 @@ export default function NavBar() {
                       <LayoutDashboard className="mr-2 h-4 w-4" />
                       Profile
                     </Link>
-                    {user.role === "Admin" && (
-                      <Link
-                        to="/admin"
-                        className="flex w-full items-center px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-100"
-                        onClick={() => setIsDropdownOpen(false)}
-                      >
-                        <Shield className="mr-2 h-4 w-4" />
-                        Admin
-                      </Link>
-                    )}
                     <button
                       onClick={handleLogout}
                       className="flex w-full items-center px-4 py-2 text-left text-sm text-red-600 hover:bg-gray-100"
@@ -103,4 +93,3 @@ export default function NavBar() {
     </header>
   );
 }
-

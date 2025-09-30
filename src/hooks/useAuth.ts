@@ -1,16 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { HTTPError } from "ky";
 import { kyAspDotnet } from "src/services/ApiService";
-import {
-  LoginSchema,
-  RegisterSchema,
-  UpdateUserSchema,
-  type LoginData,
-  type RegisterData,
-  type UpdateUserData,
-  AdminUpdateUserSchema,
-  type AdminUpdateUserData,
-} from "src/types/auth";
+import { LoginSchema, RegisterSchema, UpdateUserSchema, type LoginData, type RegisterData, type UpdateUserData } from "src/types/auth";
 import { genericApiResponseSchema } from "src/types/genericApiResponse";
 import * as v from "valibot";
 import { Cookies } from "typescript-cookie";
@@ -121,28 +112,6 @@ export function useRegisterMutation() {
     },
     onError: (error) => {
       console.error("Registration failed:", error);
-    },
-  });
-}
-
-export function useAdminUpdateUserMutation() {
-  const queryClient = useQueryClient();
-  return useMutation<User, HTTPError, { userId: number; userData: AdminUpdateUserData }>({
-    mutationFn: async ({ userId, userData }) => {
-      const validatedUserData = v.parse(AdminUpdateUserSchema, userData);
-      const response = await kyAspDotnet
-        .put(`api/Admin/users/${userId}/permissions`, {
-          json: validatedUserData,
-        })
-        .json();
-      const parsed = v.parse(genericApiResponseSchema(v.any()), response);
-      return parsed.data as User;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["allUsers"] });
-    },
-    onError: (error) => {
-      console.error("Update failed:", error);
     },
   });
 }
