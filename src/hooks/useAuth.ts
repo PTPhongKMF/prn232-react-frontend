@@ -2,22 +2,19 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { HTTPError } from "ky";
 import { kyAspDotnet } from "src/services/ApiService";
 import {
+  LoginErrorResponseSchema,
   LoginSchema,
   RegisterSchema,
   UpdateUserSchema,
   type LoginData,
+  type LoginErrorResponse,
+  type LoginSuccessResponse,
   type RegisterData,
   type UpdateUserData,
 } from "src/types/account/auth";
-import {
-  ApiErrorResponseSchema,
-  ApiSuccessResponseSchema,
-  type ApiErrorResponse,
-  type ApiSuccessResponse,
-} from "src/types/genericApiResponse";
+import { ApiErrorResponseSchema, ApiSuccessResponseSchema } from "src/types/genericApiResponse";
 import * as v from "valibot";
 import { Cookies } from "typescript-cookie";
-import { LoginResponseSchema } from "src/types/account/user";
 import { useUser } from "src/stores/userStore";
 
 export type User = {
@@ -65,11 +62,7 @@ export function useUpdateProfileMutation() {
 export function useLoginMutation() {
   const setUser = useUser((state) => state.setUser);
 
-  return useMutation<
-    ApiSuccessResponse<typeof LoginResponseSchema>,
-    ApiErrorResponse<typeof LoginResponseSchema>,
-    LoginData
-  >({
+  return useMutation<LoginSuccessResponse, LoginErrorResponse, LoginData>({
     mutationFn: async (loginData) => {
       const validatedLoginData = v.parse(LoginSchema, loginData);
       return await kyAspDotnet
@@ -82,7 +75,7 @@ export function useLoginMutation() {
             beforeError: [
               async (error) => {
                 const errorBody = await error.response.json();
-                const errorResponse = v.parse(ApiErrorResponseSchema(LoginResponseSchema), errorBody);
+                const errorResponse = v.parse(LoginErrorResponseSchema, errorBody);
                 error.message = errorResponse.message ?? "An unknown error occurred.";
                 return error;
               },

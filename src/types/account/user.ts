@@ -9,10 +9,4 @@ export const UserSchema = v.object({
   grade: v.optional(v.number()),
 });
 
-export const LoginResponseSchema = v.object({
-  user: UserSchema,
-  token: v.pipe(v.string(), v.nonEmpty()),
-});
-
 export type User = v.InferOutput<typeof UserSchema>;
-export type LoginResponse = v.InferOutput<typeof LoginResponseSchema>;
