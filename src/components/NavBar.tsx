@@ -52,13 +52,16 @@ export default function NavBar() {
             <BookOpenText />
             Exams
           </Link>
-          <Link
-            to="/questionbank"
-            className="flex justify-center items-center gap-2 font-medium text-gray-600 transition-colors hover:text-blue-600"
-          >
-            <BadgeQuestionMark />
-            Question Bank
-          </Link>
+
+          {user?.role === "Teacher" && (
+            <Link
+              to="/questionbank"
+              className="flex justify-center items-center gap-2 font-medium text-gray-600 transition-colors hover:text-blue-600"
+            >
+              <BadgeQuestionMark />
+              Question Bank
+            </Link>
+          )}
 
           <div className="h-5 w-0.5 bg-black" />
 
