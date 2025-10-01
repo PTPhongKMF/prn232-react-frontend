@@ -1,5 +1,14 @@
 import { Link, useNavigate } from "react-router";
-import { Plane, UserCircle, LogOut, LayoutDashboard, Shield } from "lucide-react";
+import {
+  Plane,
+  UserCircle,
+  LogOut,
+  LayoutDashboard,
+  Shield,
+  BookMarked,
+  BookOpenText,
+  BadgeQuestionMark,
+} from "lucide-react";
 import { useProfile } from "src/hooks/useAuth";
 import { Cookies } from "typescript-cookie";
 import { useQueryClient } from "@tanstack/react-query";
@@ -28,15 +37,27 @@ export default function NavBar() {
           <span>Mathslide</span>
         </Link>
 
-        <div className="flex items-center gap-6">
+        <div className="flex items-center gap-12">
           <Link
             to="/slides"
-            className="hidden font-medium text-gray-600 transition-colors hover:text-blue-600 md:block"
+            className="flex justify-center items-center gap-1 font-medium text-gray-600 transition-colors hover:text-blue-600"
           >
+            <BookMarked />
             Slides
           </Link>
-          <Link to="/exams" className="hidden font-medium text-gray-600 transition-colors hover:text-blue-600 md:block">
+          <Link
+            to="/exams"
+            className="flex justify-center items-center gap-2 font-medium text-gray-600 transition-colors hover:text-blue-600"
+          >
+            <BookOpenText />
             Exams
+          </Link>
+          <Link
+            to="/questionbank"
+            className="flex justify-center items-center gap-2 font-medium text-gray-600 transition-colors hover:text-blue-600"
+          >
+            <BadgeQuestionMark />
+            Question Bank
           </Link>
 
           <div className="h-5 w-0.5 bg-black" />
