@@ -1,14 +1,20 @@
 import { Loader2Icon, LockKeyhole, Mail } from "lucide-react";
 import { useState } from "react";
-import { Link, useNavigate } from "react-router";
+import { Link, Navigate, useNavigate } from "react-router";
 import { Input } from "src/components/libs/shadcn/input";
 import { useLoginMutation } from "src/hooks/useAuth";
+import { useUser } from "src/stores/userStore";
 
 export default function Login() {
+  const user = useUser((state) => state.user);
   const [loginData, setLoginData] = useState({ email: "", password: "" });
   const navigate = useNavigate();
 
   const handleLogin = useLoginMutation();
+
+  if (user) {
+    return <Navigate to="/" />;
+  }
 
   return (
     <div

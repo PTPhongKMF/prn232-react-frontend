@@ -1,6 +1,10 @@
 import { BookOpen, Star, Target, TestTube2, TrendingUp } from "lucide-react";
+import { Link } from "react-router";
+import { useUser } from "src/stores/userStore";
 
 export default function Home() {
+  const user = useUser((state) => state.user);
+
   return (
     <div className="bg-amber-50 text-gray-800">
       {/* Hero Section */}
@@ -13,15 +17,21 @@ export default function Home() {
             Your fun and interactive way to master math. Ready to start your learning adventure?
           </p>
           <div className="mt-10 flex items-center justify-center gap-x-6">
-            <a
-              href="/register"
-              className="rounded-lg bg-blue-600 px-8 py-3 font-semibold text-white shadow-md transition-transform hover:scale-105 active:scale-95"
-            >
-              Get Started for Free
-            </a>
-            <a href="#features" className="font-semibold leading-6 text-gray-900">
-              Learn more <span aria-hidden="true">→</span>
-            </a>
+            {!user ? (
+              <Link
+                to="/register"
+                className="rounded-lg bg-blue-600 px-8 py-3 font-semibold text-white shadow-md transition-transform hover:scale-105 active:scale-95"
+              >
+                Get Started for Free
+              </Link>
+            ) : (
+              <Link
+                to="/slides"
+                className="rounded-lg bg-blue-600 px-8 py-3 font-semibold text-white shadow-md transition-transform hover:scale-105 active:scale-95"
+              >
+                View Slides
+              </Link>
+            )}
           </div>
         </div>
       </div>
@@ -175,8 +185,8 @@ export default function Home() {
                 <figure className="rounded-2xl bg-gray-50 p-8 text-sm leading-6">
                   <blockquote className="text-gray-900">
                     <p>
-                      “As a parent, I love that I can track my child's progress and see where they need extra help. Highly
-                      recommended!”
+                      “As a parent, I love that I can track my child's progress and see where they need extra help.
+                      Highly recommended!”
                     </p>
                   </blockquote>
                   <figcaption className="mt-6 flex items-center gap-x-4">
@@ -205,12 +215,21 @@ export default function Home() {
             Start learning with Mathslide today.
           </h2>
           <div className="mt-10 flex items-center gap-x-6 lg:mt-0 lg:flex-shrink-0">
-            <a
-              href="/register"
-              className="rounded-lg bg-blue-600 px-8 py-3 font-semibold text-white shadow-md transition-transform hover:scale-105 active:scale-95"
-            >
-              Sign up for free
-            </a>
+            {!user ? (
+              <Link
+                to="/register"
+                className="rounded-lg bg-blue-600 px-8 py-3 font-semibold text-white shadow-md transition-transform hover:scale-105 active:scale-95"
+              >
+                Sign up for free
+              </Link>
+            ) : (
+              <Link
+                to="/exams"
+                className="rounded-lg bg-blue-600 px-8 py-3 font-semibold text-white shadow-md transition-transform hover:scale-105 active:scale-95"
+              >
+                Start practicing now!
+              </Link>
+            )}
           </div>
         </div>
       </div>

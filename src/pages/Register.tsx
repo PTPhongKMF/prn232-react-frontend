@@ -1,8 +1,9 @@
 import { useState } from "react";
-import { Link, useNavigate } from "react-router";
+import { Link, Navigate, useNavigate } from "react-router";
 import { useRegisterMutation } from "src/hooks/useAuth";
 import { Input } from "src/components/libs/shadcn/input";
 import { User, Mail, LockKeyhole, GraduationCap, Loader2Icon } from "lucide-react";
+import { useUser } from "src/stores/userStore";
 
 export default function Register() {
   const [registerData, setRegisterData] = useState({
@@ -12,6 +13,7 @@ export default function Register() {
     grade: "",
   });
 
+  const user = useUser((state) => state.user);
   const navigate = useNavigate();
   const handleRegister = useRegisterMutation();
 
@@ -28,6 +30,10 @@ export default function Register() {
       },
     );
   };
+
+  if (user) {
+    return <Navigate to="/" />;
+  }
 
   return (
     <div className="flex min-h-[100svh] items-center justify-center bg-amber-50 bg-[url(/imgs/bg/login.png)] bg-cover p-4">
