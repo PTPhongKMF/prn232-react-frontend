@@ -1,14 +1,5 @@
 import { Link, useNavigate } from "react-router";
-import {
-  Plane,
-  UserCircle,
-  LogOut,
-  LayoutDashboard,
-  Shield,
-  BookMarked,
-  BookOpenText,
-  BadgeQuestionMark,
-} from "lucide-react";
+import { UserCircle, LogOut, LayoutDashboard, Shield, BookMarked, BookOpenText, BadgeQuestionMark } from "lucide-react";
 import { useProfile } from "src/hooks/useAuth";
 import { Cookies } from "typescript-cookie";
 import { useQueryClient } from "@tanstack/react-query";
