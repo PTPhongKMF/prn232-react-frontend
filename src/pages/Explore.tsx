@@ -1,8 +1,7 @@
 import { useState, useMemo } from "react";
 import { usePublicSlides } from "src/hooks/useSlides";
-import { Loader2, DollarSign, GraduationCap, User, FileWarning, Search, ShoppingCart, Info, Calendar, FileType, X } from "lucide-react";
+import { Loader2, GraduationCap, User, FileWarning, Search, ShoppingCart, Info, Calendar, FileType, X } from "lucide-react";
 import { Input } from "src/components/libs/shadcn/input";
-import type { SlideWithTeacher } from "src/types/slide/slide";
 import { cn } from "src/utils/cn";
 
 export default function Explore() {
