@@ -6,6 +6,8 @@ import Register from "./pages/Register";
 import Test from "src/pages/Test";
 import Profile from "src/pages/Profile";
 import Admin from "src/pages/Admin";
+import Upload from "src/pages/Upload";
+import Slides from "src/pages/Slides";
 
 function App() {
   return (
@@ -15,7 +17,9 @@ function App() {
         <Route path="login" element={<Login />} />
         <Route path="register" element={<Register />} />
         <Route path="profile" element={<Profile />} />
-        <Route path="admin" element={<Admin />} /> 
+        <Route path="admin" element={<Admin />} />
+        <Route path="upload" element={<Upload />} />
+        <Route path="slides/user/:userId" element={<Slides />} />
 
         <Route path="test" element={<Test />} />
       </Route>
