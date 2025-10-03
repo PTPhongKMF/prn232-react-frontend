@@ -2,7 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { HTTPError } from "ky";
 import { kyAspDotnet } from "src/services/ApiService";
 import { createApiSuccessResponseSchema } from "src/types/genericApiResponse";
-import { SlideCreateSchema, type Slide, type SlideCreateData } from "src/types/slide/slide";
+import { SlideCreateSchema, SlideUpdateSchema, type Slide, type SlideCreateData, type SlideUpdateData } from "src/types/slide/slide";
 import * as v from "valibot";
 
 export function useCreateSlideMutation() {
@@ -39,5 +39,50 @@ export function useSlidesByTeacherId(teacherId?: number) {
       return parsed.data as Slide[];
     },
     enabled: !!teacherId,
+  });
+}
+
+export function useUpdateSlideMutation() {
+    const queryClient = useQueryClient();
+    return useMutation<Slide, HTTPError, { slideDto: SlideUpdateData; file: File | null }>({
+      mutationFn: async ({ slideDto, file }) => {
+        const validatedSlideData = v.parse(SlideUpdateSchema, slideDto);
+        const { id, ...payload } = validatedSlideData;
+  
+        const formData = new FormData();
+        formData.append("slideDtoStr", JSON.stringify(payload));
+        if (file) {
+          formData.append("file", file);
+        }
+  
+        const response = await kyAspDotnet
+          .put(`api/Slides/${id}`, {
+            body: formData,
+          })
+          .json();
+        const parsed = v.parse(createApiSuccessResponseSchema(v.any()), response);
+        return parsed.data as Slide;
+      },
+      onSuccess: (updatedSlide) => {
+        queryClient.invalidateQueries({ queryKey: ["slides", updatedSlide.teacherId] });
+      },
+    });
+  }
+
+export function useUpdateSlideStatusMutation() {
+  const queryClient = useQueryClient();
+  return useMutation<Slide, HTTPError, { slideId: number; isPublished: boolean }>({
+    mutationFn: async ({ slideId, isPublished }) => {
+      const response = await kyAspDotnet
+        .patch(`api/Slides/${slideId}/status`, {
+          json: { isPublished },
+        })
+        .json();
+      const parsed = v.parse(createApiSuccessResponseSchema(v.any()), response);
+      return parsed.data as Slide;
+    },
+    onSuccess: (updatedSlide) => {
+      queryClient.invalidateQueries({ queryKey: ["slides", updatedSlide.teacherId] });
+    },
   });
 }
