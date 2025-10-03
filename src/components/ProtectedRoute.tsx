@@ -1,4 +1,4 @@
-import { Navigate, Outlet, useNavigate } from "react-router";
+import { Navigate, Outlet} from "react-router";
 import { useUser } from "src/stores/userStore";
 
 interface ProtectedRouteProps {
