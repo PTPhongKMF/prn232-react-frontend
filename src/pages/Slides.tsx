@@ -1,6 +1,7 @@
 import { useParams } from "react-router";
 import { useSlidesByTeacherId } from "src/hooks/useSlides";
 import { Loader2 } from "lucide-react";
+import { backendUrl } from "src/services/ApiService";
 
 export default function Slides() {
   const { userId } = useParams();
@@ -46,7 +47,7 @@ export default function Slides() {
               <div className="bg-gray-50 px-6 py-3">
                 {slide.fileUrl && (
                   <a
-                    href={slide.fileUrl}
+                    href={`${backendUrl.slice(0, -1)}${slide.fileUrl}`}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="text-sm font-semibold text-blue-600 hover:text-blue-500"

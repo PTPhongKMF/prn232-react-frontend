@@ -30,7 +30,6 @@ export default function Upload() {
       alert("Please select a file to upload.");
       return;
     }
-    // The backend expects slidePages, so we send an empty array for now.
     const fullSlideData = { ...slideData, slidePages: [] };
     createSlideMutation.mutate({ slideDto: fullSlideData, file });
   };
@@ -57,7 +56,6 @@ export default function Upload() {
 
         <form onSubmit={handleSubmit}>
           <div className="grid grid-cols-1 gap-x-6 gap-y-8 px-8 md:grid-cols-2">
-            {/* Form Fields */}
             <div>
               <label className="text-sm font-medium text-gray-700">Title</label>
               <div className="relative mt-1">
