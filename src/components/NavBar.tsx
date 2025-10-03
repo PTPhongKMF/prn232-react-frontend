@@ -1,14 +1,27 @@
 import { Link, useNavigate } from "react-router";
-import { Plane, UserCircle, LogOut, LayoutDashboard, Shield, Upload, BookOpen, Search } from "lucide-react";
+import {
+  Plane,
+  UserCircle,
+  LogOut,
+  LayoutDashboard,
+  Shield,
+  Upload,
+  BookOpen,
+  Search,
+  ShoppingCart,
+  CreditCard,
+} from "lucide-react";
 import { useProfile } from "src/hooks/useAuth";
 import { Cookies } from "typescript-cookie";
 import { useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { useUser } from "src/stores/userStore";
+import { useCart } from "src/stores/cartStore";
 
 export default function NavBar() {
   const { data: user, isSuccess } = useProfile();
   const setUser = useUser((state) => state.setUser);
+  const { items } = useCart();
   const queryClient = useQueryClient();
   const navigate = useNavigate();
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
@@ -23,7 +36,10 @@ export default function NavBar() {
   return (
     <header className="fixed top-0 left-0 z-50 w-full bg-amber-50/80 backdrop-blur-sm shadow-sm">
       <nav className="container mx-auto flex h-16 items-center justify-between px-6">
-        <Link to="/" className="flex items-center gap-2 text-xl font-bold text-gray-800">
+        <Link
+          to="/"
+          className="flex items-center gap-2 text-xl font-bold text-gray-800"
+        >
           <Plane className="text-blue-600" />
           <span>Mathslide</span>
         </Link>
@@ -36,6 +52,15 @@ export default function NavBar() {
             <Search size={18} />
             Explore
           </Link>
+          <Link to="/payment" className="relative flex items-center gap-2 font-medium text-gray-600 transition-colors hover:text-blue-600">
+            <ShoppingCart size={18} />
+            {items.length > 0 && (
+              <span className="absolute -top-2 -right-2 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-xs text-white">
+                {items.length}
+              </span>
+            )}
+            Cart
+          </Link>
           {isSuccess && user ? (
             <div className="relative">
               <button
@@ -46,7 +71,7 @@ export default function NavBar() {
                 <span>Welcome, {user.name}!</span>
               </button>
               {isDropdownOpen && (
-                <div className="absolute right-0 mt-2 w-48 rounded-md bg-white shadow-lg">
+                <div className="absolute right-0 mt-2 w-56 rounded-md bg-white shadow-lg">
                   <div className="py-1">
                     <Link
                       to="/profile"
@@ -57,14 +82,24 @@ export default function NavBar() {
                       Profile
                     </Link>
                     {user.role === "Admin" && (
-                      <Link
-                        to="/admin"
-                        className="flex w-full items-center px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-100"
-                        onClick={() => setIsDropdownOpen(false)}
-                      >
-                        <Shield className="mr-2 h-4 w-4" />
-                        Admin
-                      </Link>
+                      <>
+                        <Link
+                          to="/admin"
+                          className="flex w-full items-center px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-100"
+                          onClick={() => setIsDropdownOpen(false)}
+                        >
+                          <Shield className="mr-2 h-4 w-4" />
+                          User Management
+                        </Link>
+                        <Link
+                          to="/admin/payment-methods"
+                          className="flex w-full items-center px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-100"
+                          onClick={() => setIsDropdownOpen(false)}
+                        >
+                          <CreditCard className="mr-2 h-4 w-4" />
+                          Payment Methods
+                        </Link>
+                      </>
                     )}
                     <Link
                       to="/upload"
@@ -113,7 +148,10 @@ export default function NavBar() {
               >
                 Contact
               </Link>
-              <Link to="/login" className="font-semibold text-gray-600 transition-colors hover:text-blue-600">
+              <Link
+                to="/login"
+                className="font-semibold text-gray-600 transition-colors hover:text-blue-600"
+              >
                 Login
               </Link>
               <Link
