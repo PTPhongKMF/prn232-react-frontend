@@ -23,7 +23,7 @@ export default function MyLibrary() {
     );
   }
   
-  const allPurchasedItems = history?.flatMap(receipt => receipt.purchasedItems) ?? [];
+  const allPurchasedItems = history?.flatMap(receipt => receipt.purchasedItems).filter(item => item) ?? [];
 
   return (
     <div className="min-h-screen bg-amber-50">

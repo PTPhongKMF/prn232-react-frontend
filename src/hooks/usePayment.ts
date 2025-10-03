@@ -1,4 +1,4 @@
-import { useMutation, useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { HTTPError } from "ky";
 import { kyAspDotnet } from "src/services/ApiService";
 import { createApiSuccessResponseSchema } from "src/types/genericApiResponse";
@@ -57,11 +57,15 @@ export function usePurchaseMutation() {
 }
 
 export function useUpdateReceiptStatusMutation() {
+    const queryClient = useQueryClient();
     return useMutation<unknown, HTTPError, { receiptId: number; status: 'Paid' | 'Failed' }>({
         mutationFn: async ({ receiptId, status }) => {
             return await kyAspDotnet.patch(`api/Purchase/${receiptId}/status`, {
                 json: { status },
             }).json();
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ["purchaseHistory"] });
         },
         onError: (error) => {
             console.error("Status update failed:", error);
@@ -80,4 +84,3 @@ export function usePurchaseHistory() {
         retry: false,
     });
 }
-

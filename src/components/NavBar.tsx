@@ -10,6 +10,7 @@ import {
   Search,
   ShoppingCart,
   CreditCard,
+  BookText,
 } from "lucide-react";
 import { useProfile } from "src/hooks/useAuth";
 import { Cookies } from "typescript-cookie";
@@ -61,6 +62,17 @@ export default function NavBar() {
             )}
             Cart
           </Link>
+
+          {isSuccess && user?.role === "Student" && (
+            <Link
+              to="/my-library"
+              className="flex items-center gap-2 font-medium text-gray-600 transition-colors hover:text-blue-600"
+            >
+              <BookText size={18} />
+              My Library
+            </Link>
+          )}
+
           {isSuccess && user ? (
             <div className="relative">
               <button
