@@ -29,7 +29,7 @@ export default function Slides() {
       price: slide.price,
       grade: slide.grade || undefined,
       isPublished: slide.isPublished,
-      slidePages: [],
+      slidePages: slide.slidePages || [],
     });
   };
 
@@ -149,11 +149,11 @@ export default function Slides() {
                       </div>
                       <div>
                         <label className="text-sm font-medium text-gray-700">Replace File</label>
-                        <label htmlFor="file-edit" className="mt-1 flex cursor-pointer items-center gap-3 rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-600 hover:bg-gray-50">
+                        <label htmlFor={`file-edit-${slide.id}`} className="mt-1 flex cursor-pointer items-center gap-3 rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-600 hover:bg-gray-50">
                           <UploadCloud size={20} className="text-gray-400" />
-                          <span>{editFile ? editFile.name : "Choose new file (optional)"}</span>
+                          <span className="truncate">{editFile ? editFile.name : "Choose new file (optional)"}</span>
                         </label>
-                        <input id="file-edit" type="file" className="sr-only" onChange={handleFileChange} />
+                        <input id={`file-edit-${slide.id}`} type="file" className="sr-only" onChange={handleFileChange} />
                       </div>
                     </div>
                     <div className="flex items-center justify-end gap-2 bg-gray-50 px-4 py-3">

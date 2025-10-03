@@ -1,5 +1,5 @@
 import { Link, useNavigate } from "react-router";
-import { Plane, UserCircle, LogOut, LayoutDashboard, Shield, Upload, BookOpen } from "lucide-react";
+import { Plane, UserCircle, LogOut, LayoutDashboard, Shield, Upload, BookOpen, Search } from "lucide-react";
 import { useProfile } from "src/hooks/useAuth";
 import { Cookies } from "typescript-cookie";
 import { useQueryClient } from "@tanstack/react-query";
@@ -29,6 +29,13 @@ export default function NavBar() {
         </Link>
 
         <div className="flex items-center gap-6">
+          <Link
+            to="/explore"
+            className="flex items-center gap-2 font-medium text-gray-600 transition-colors hover:text-blue-600"
+          >
+            <Search size={18} />
+            Explore
+          </Link>
           {isSuccess && user ? (
             <div className="relative">
               <button
@@ -59,22 +66,22 @@ export default function NavBar() {
                         Admin
                       </Link>
                     )}
-                     <Link
-                        to="/upload"
-                        className="flex w-full items-center px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-100"
-                        onClick={() => setIsDropdownOpen(false)}
-                      >
-                        <Upload className="mr-2 h-4 w-4" />
-                        Upload
-                      </Link>
-                      <Link
-                        to={`/slides/user/${user.id}`}
-                        className="flex w-full items-center px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-100"
-                        onClick={() => setIsDropdownOpen(false)}
-                      >
-                        <BookOpen className="mr-2 h-4 w-4" />
-                        My Slides
-                      </Link>
+                    <Link
+                      to="/upload"
+                      className="flex w-full items-center px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-100"
+                      onClick={() => setIsDropdownOpen(false)}
+                    >
+                      <Upload className="mr-2 h-4 w-4" />
+                      Upload
+                    </Link>
+                    <Link
+                      to={`/slides/user/${user.id}`}
+                      className="flex w-full items-center px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-100"
+                      onClick={() => setIsDropdownOpen(false)}
+                    >
+                      <BookOpen className="mr-2 h-4 w-4" />
+                      My Slides
+                    </Link>
                     <button
                       onClick={handleLogout}
                       className="flex w-full items-center px-4 py-2 text-left text-sm text-red-600 hover:bg-gray-100"

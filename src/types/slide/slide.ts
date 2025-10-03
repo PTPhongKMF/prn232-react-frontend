@@ -6,6 +6,14 @@ export const SlidePageCreateSchema = v.object({
   content: v.optional(v.string()),
 });
 
+export const SlidePageSchema = v.object({
+    id: v.number(),
+    slideId: v.number(),
+    orderNumber: v.number(),
+    title: v.nullable(v.string()),
+    content: v.nullable(v.string()),
+});
+
 export const SlideCreateSchema = v.object({
   title: v.pipe(v.string(), v.minLength(3, "Title must be at least 3 characters.")),
   topic: v.optional(v.string()),
@@ -33,9 +41,8 @@ export const SlideSchema = v.object({
 
 export type Slide = v.InferOutput<typeof SlideSchema>;
 
-// This schema is for the full update, including the ID
 export const SlideUpdateSchema = v.object({
-  id: v.number(), // ID is required for updates
+  id: v.number(),
   title: v.pipe(v.string(), v.minLength(3, "Title must be at least 3 characters.")),
   topic: v.optional(v.string()),
   price: v.pipe(v.number(), v.minValue(0)),
@@ -45,3 +52,17 @@ export const SlideUpdateSchema = v.object({
 });
 
 export type SlideUpdateData = v.InferOutput<typeof SlideUpdateSchema>;
+export const TeacherSchema = v.object({
+  id: v.number(),
+  name: v.string(),
+  email: v.string(),
+  role: v.string(),
+  grade: v.optional(v.nullable(v.number())),
+});
+
+export const SlideWithTeacherSchema = v.intersect([
+  SlideSchema,
+  v.object({ teacher: TeacherSchema }),
+]);
+
+export type SlideWithTeacher = v.InferOutput<typeof SlideWithTeacherSchema>;

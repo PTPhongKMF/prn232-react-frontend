@@ -2,7 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { HTTPError } from "ky";
 import { kyAspDotnet } from "src/services/ApiService";
 import { createApiSuccessResponseSchema } from "src/types/genericApiResponse";
-import { SlideCreateSchema, SlideUpdateSchema, type Slide, type SlideCreateData, type SlideUpdateData } from "src/types/slide/slide";
+import { SlideCreateSchema, SlideUpdateSchema, type Slide, type SlideCreateData, type SlideUpdateData, type SlideWithTeacher } from "src/types/slide/slide";
 import * as v from "valibot";
 
 export function useCreateSlideMutation() {
@@ -86,3 +86,13 @@ export function useUpdateSlideStatusMutation() {
     },
   });
 }
+export function usePublicSlides() {
+    return useQuery<SlideWithTeacher[], HTTPError>({
+      queryKey: ["publicSlides"],
+      queryFn: async () => {
+        const response = await kyAspDotnet.get(`api/Slides/public`).json();
+        const parsed = v.parse(createApiSuccessResponseSchema(v.array(v.any())), response);
+        return parsed.data as SlideWithTeacher[];
+      },
+    });
+  }

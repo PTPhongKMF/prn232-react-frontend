@@ -8,12 +8,14 @@ import Profile from "src/pages/Profile";
 import Admin from "src/pages/Admin";
 import Upload from "src/pages/Upload";
 import Slides from "src/pages/Slides";
+import Explore from "src/pages/Explore";
 
 function App() {
   return (
     <Routes>
       <Route element={<SiteLayout />}>
         <Route index element={<Home />} />
+        <Route path="explore" element={<Explore />} /> 
         <Route path="login" element={<Login />} />
         <Route path="register" element={<Register />} />
         <Route path="profile" element={<Profile />} />
