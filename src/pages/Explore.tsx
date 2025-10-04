@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, Fragment } from "react";
 import { usePublicSlides } from "src/hooks/useSlides";
 import {
   Loader2,
@@ -8,26 +8,134 @@ import {
   Search,
   ShoppingCart,
   Check,
-  Calendar
+  Calendar,
+  X,
+  BookOpen,
+  Info,
+  Library,
+  FileType, // <-- Import FileType icon
 } from "lucide-react";
-import { Input } from "src/components/libs/shadcn/input";
-import { cn } from "src/utils/cn";
-import { useCart } from "src/stores/cartStore";
-import type { SlideWithTeacher } from "src/types/slide/slide";
-import { useProfile } from "src/hooks/useAuth";
+import { Input } from "../components/libs/shadcn/input";
+import { cn } from "../utils/cn";
+import { useCart } from "../stores/cartStore";
+import type { SlideWithTeacher } from "../types/slide/slide";
+import { useProfile } from "../hooks/useAuth";
+import { Dialog, Transition } from '@headlessui/react'
+import { usePurchaseHistory } from "src/hooks/usePayment";
 
-const SlideCard = ({ slide, currentUser, onAddToCart }: { slide: SlideWithTeacher, currentUser: any, onAddToCart: (slide: SlideWithTeacher) => void }) => {
+// Helper function to format date
+const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" });
+};
+
+// Helper function to get file type
+const getFileType = (contentType: string | null) => {
+    if (!contentType) return "File";
+    if (contentType.includes("pdf")) return "PDF";
+    if (contentType.includes("presentation")) return "PPTX";
+    return "File";
+};
+
+
+const SlideDetailModal = ({ slide, isOpen, onClose }: { slide: SlideWithTeacher | null, isOpen: boolean, onClose: () => void }) => {
+  if (!slide) return null;
+
+  return (
+    <Transition appear show={isOpen} as={Fragment}>
+      <Dialog as="div" className="relative z-50" onClose={onClose}>
+        <Transition.Child
+          as={Fragment}
+          enter="ease-out duration-300"
+          enterFrom="opacity-0"
+          enterTo="opacity-100"
+          leave="ease-in duration-200"
+          leaveFrom="opacity-100"
+          leaveTo="opacity-0"
+        >
+          <div className="fixed inset-0 bg-black/60" />
+        </Transition.Child>
+
+        <div className="fixed inset-0 overflow-y-auto">
+          <div className="flex min-h-full items-center justify-center p-4 text-center">
+            <Transition.Child
+              as={Fragment}
+              enter="ease-out duration-300"
+              enterFrom="opacity-0 scale-95"
+              enterTo="opacity-100 scale-100"
+              leave="ease-in duration-200"
+              leaveFrom="opacity-100 scale-100"
+              leaveTo="opacity-0 scale-95"
+            >
+              <Dialog.Panel className="w-full max-w-2xl transform overflow-hidden rounded-2xl bg-white p-8 text-left align-middle shadow-xl transition-all">
+                <Dialog.Title
+                  as="h3"
+                  className="text-2xl font-bold leading-6 text-gray-900"
+                >
+                  {slide.title}
+                </Dialog.Title>
+                
+                {/* ===== MODIFIED SECTION START ===== */}
+                <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-gray-500">
+                    <div className="flex items-center gap-1.5"><User size={14} /> By {slide.teacher.name}</div>
+                    <div className="flex items-center gap-1.5"><GraduationCap size={14} /> Grade {slide.grade || 'All'}</div>
+                    <div className="flex items-center gap-1.5"><Calendar size={14} /> {formatDate(slide.createdAt)}</div>
+                    <div className="flex items-center gap-1.5"><FileType size={14} /> {getFileType(slide.contentType)}</div>
+                </div>
+                {/* ===== MODIFIED SECTION END ===== */}
+
+
+                <div className="mt-6">
+                    <h4 className="font-semibold text-gray-800">Slide Content</h4>
+                     <div className="mt-3 max-h-48 overflow-y-auto rounded-lg border bg-gray-50 p-4">
+                        {slide.slidePages && slide.slidePages.length > 0 ? (
+                        <ul className="space-y-2">
+                            {slide.slidePages.map(page => (
+                            <li key={page.id} className="flex items-center gap-3 text-sm text-gray-700">
+                                <BookOpen size={16} className="text-blue-500 flex-shrink-0" />
+                                <span>{page.title || `Page ${page.orderNumber}`}</span>
+                            </li>
+                            ))}
+                        </ul>
+                        ) : <p className="text-sm text-gray-500 italic">No detailed content list available.</p>}
+                    </div>
+                </div>
+
+                <div className="mt-8 flex items-center justify-between">
+                  <span className="text-3xl font-bold text-gray-900">${slide.price.toFixed(2)}</span>
+                  <button
+                    type="button"
+                    className="inline-flex justify-center rounded-md border border-transparent bg-blue-100 px-6 py-3 text-sm font-medium text-blue-900 hover:bg-blue-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
+                    onClick={onClose}
+                  >
+                    Close
+                  </button>
+                </div>
+
+                 <button
+                    type="button"
+                    className="absolute top-4 right-4 rounded-full p-2 text-gray-400 hover:bg-gray-100 hover:text-gray-600"
+                    onClick={onClose}
+                >
+                    <X size={20} />
+                </button>
+              </Dialog.Panel>
+            </Transition.Child>
+          </div>
+        </div>
+      </Dialog>
+    </Transition>
+  )
+}
+
+
+const SlideCard = ({ slide, currentUser, onAddToCart, onViewDetails, isPurchased }: { slide: SlideWithTeacher, currentUser: any, onAddToCart: (slide: SlideWithTeacher) => void, onViewDetails: (slide: SlideWithTeacher) => void, isPurchased: boolean }) => {
+  // ... (no changes in this component)
   const { items: cartItems } = useCart();
   const isInCart = cartItems.some(item => item.id === slide.id);
   const canPurchase = currentUser?.role === 'Student' && currentUser?.id !== slide.teacher.id;
 
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" });
-  };
-
   return (
     <div className="group relative flex flex-col overflow-hidden rounded-2xl bg-white shadow-md transition-all duration-300 hover:-translate-y-1 hover:shadow-xl">
-      {/* A simple visual placeholder for the slide content */}
       <div className="flex h-48 items-center justify-center bg-gradient-to-br from-blue-500 to-indigo-600 p-4 text-white">
          <h3 className="text-center text-xl font-bold tracking-tight">{slide.title}</h3>
       </div>
@@ -48,21 +156,32 @@ const SlideCard = ({ slide, currentUser, onAddToCart }: { slide: SlideWithTeache
         </div>
         <div className="mt-6 flex items-end justify-between">
           <p className="text-2xl font-bold text-gray-900">${slide.price.toFixed(2)}</p>
-          {canPurchase && (
+          <div className="flex items-center gap-2">
             <button
-              onClick={() => onAddToCart(slide)}
-              disabled={isInCart}
-              className={cn(
-                "inline-flex h-12 w-12 items-center justify-center rounded-full font-semibold text-white shadow-sm ring-2 ring-offset-2 ring-offset-white transition-all active:scale-95",
-                isInCart
-                  ? "cursor-not-allowed bg-green-500 ring-green-500"
-                  : "bg-blue-600 ring-blue-600 hover:bg-blue-700"
-              )}
-              aria-label={isInCart ? "Added to cart" : "Add to cart"}
+                onClick={() => onViewDetails(slide)}
+                className="inline-flex h-12 w-12 items-center justify-center rounded-full bg-white text-gray-600 shadow-sm ring-1 ring-inset ring-gray-300 transition-colors hover:bg-gray-50 active:scale-95"
+                aria-label="View details"
             >
-              {isInCart ? <Check size={20} /> : <ShoppingCart size={20} />}
+                <Info size={20} />
             </button>
-          )}
+            {canPurchase && (
+              <button
+                onClick={() => onAddToCart(slide)}
+                disabled={isInCart || isPurchased}
+                className={cn(
+                  "inline-flex h-12 w-12 items-center justify-center rounded-full font-semibold text-white shadow-sm ring-2 ring-offset-2 ring-offset-white transition-all active:scale-95",
+                  {
+                    "cursor-not-allowed bg-green-500 ring-green-500": isInCart,
+                    "bg-blue-600 ring-blue-600 hover:bg-blue-700": !isInCart && !isPurchased,
+                    "cursor-not-allowed bg-gray-400 ring-gray-400": isPurchased,
+                  }
+                )}
+                aria-label={isInCart ? "Added to cart" : isPurchased ? "In Library" : "Add to cart"}
+              >
+                {isInCart ? <Check size={20} /> : isPurchased ? <Library size={20}/> : <ShoppingCart size={20} />}
+              </button>
+            )}
+          </div>
         </div>
       </div>
        <div className="border-t border-gray-100 p-4 text-xs text-gray-400">
@@ -76,12 +195,20 @@ const SlideCard = ({ slide, currentUser, onAddToCart }: { slide: SlideWithTeache
 };
 
 export default function Explore() {
-  const { data: slides, isLoading, isError, error } = usePublicSlides();
+  // ... (no changes in this component)
+  const { data: slides, isLoading: isLoadingSlides, isError, error } = usePublicSlides();
   const { data: currentUser } = useProfile();
+  const { data: purchaseHistory, isLoading: isLoadingHistory } = usePurchaseHistory();
   const { addToCart } = useCart();
 
   const [searchTerm, setSearchTerm] = useState("");
   const [sortOrder, setSortOrder] = useState("newest");
+  const [selectedSlide, setSelectedSlide] = useState<SlideWithTeacher | null>(null);
+
+  const purchasedSlideIds = useMemo(() => {
+    if (!purchaseHistory) return new Set<number>();
+    return new Set(purchaseHistory.flatMap(receipt => receipt.purchasedItems.map(item => item.slideId)));
+  }, [purchaseHistory]);
 
   const filteredAndSortedSlides = useMemo(() => {
     if (!slides) return [];
@@ -105,6 +232,16 @@ export default function Explore() {
   const handleAddToCart = (slide: SlideWithTeacher) => {
     addToCart(slide);
   };
+
+  const handleViewDetails = (slide: SlideWithTeacher) => {
+      setSelectedSlide(slide);
+  }
+
+  const handleCloseModal = () => {
+      setSelectedSlide(null);
+  }
+  
+  const isLoading = isLoadingSlides || isLoadingHistory;
 
   if (isLoading) {
     return (
@@ -167,6 +304,8 @@ export default function Explore() {
                 slide={slide}
                 currentUser={currentUser}
                 onAddToCart={handleAddToCart}
+                onViewDetails={handleViewDetails}
+                isPurchased={purchasedSlideIds.has(slide.id)}
               />
             ))}
           </div>
@@ -178,6 +317,7 @@ export default function Explore() {
           </div>
         )}
       </div>
+      <SlideDetailModal isOpen={!!selectedSlide} onClose={handleCloseModal} slide={selectedSlide}/>
     </div>
   );
 }
