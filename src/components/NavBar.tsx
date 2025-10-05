@@ -38,7 +38,7 @@ export default function NavBar() {
 
   return (
     <header className="fixed top-0 left-0 z-50 w-full bg-amber-50/80 backdrop-blur-sm shadow-sm">
-      <nav className="container mx-auto flex h-16 items-center justify-between px-6">
+      <nav className="container mx-auto flex h-12 items-center justify-between px-6">
         <Link to="/" className="flex items-center gap-4 text-xl font-bold text-gray-800">
           <img src="/imgs/web-logo.png" className="size-10" />
           <span>Mathslide</span>
