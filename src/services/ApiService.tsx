@@ -2,10 +2,11 @@ import ky from "ky";
 import { Cookies } from "typescript-cookie";
 
 const KyAspDotnet_LOCAL = "https://localhost:7035/";
-// const KyAspDotnet_WEB = "";
+
+export const backendUrl = KyAspDotnet_LOCAL;
 
 export const kyAspDotnet = ky.extend({
-  prefixUrl: KyAspDotnet_LOCAL,
+  prefixUrl: backendUrl,
   hooks: {
     beforeRequest: [
       (request) => {

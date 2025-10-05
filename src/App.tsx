@@ -12,6 +12,11 @@ import { useUser } from "src/stores/userStore";
 import { Cookies } from "typescript-cookie";
 import ProtectedRoute from "src/components/ProtectedRoute";
 import QuestionBank from "src/pages/QuestionBank";
+import Upload from "src/pages/Upload";
+import Explore from "src/pages/Explore";
+import Payment from "src/pages/Payment";
+import MyLibrary from "src/pages/MyLibrary";
+import PaymentMethodsAdmin from "./pages/PaymentMethodsAdmin";
 
 function App() {
   const user = useUser((s) => s.user);
@@ -26,6 +31,7 @@ function App() {
     <Routes>
       <Route element={<SiteLayout />}>
         <Route index element={<Home />} />
+        <Route path="explore" element={<Explore />} />
         <Route path="login" element={<Login />} />
         <Route path="register" element={<Register />} />
 
@@ -38,9 +44,12 @@ function App() {
           <Route path="questionbank" element={<QuestionBank />} />
         </Route>
 
-        <Route element={<ProtectedRoute allowedRoles={["Admin"]} />}>
-          <Route path="admin" element={<Admin />} />
-        </Route>
+        <Route path="admin" element={<Admin />} />
+        <Route path="admin/payment-methods" element={<PaymentMethodsAdmin />} />
+        <Route path="upload" element={<Upload />} />
+        <Route path="slides/user/:userId" element={<Slides />} />
+        <Route path="payment" element={<Payment />} />
+        <Route path="my-library" element={<MyLibrary />} />
 
         <Route path="test" element={<Test />} />
       </Route>
