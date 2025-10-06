@@ -11,9 +11,10 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@headlessui/react": "^2.2.9",
     "@radix-ui/react-accordion": "^1.2.12",
     "@radix-ui/react-dialog": "^1.1.15",
-    "@headlessui/react": "^2.2.9",
+    "@radix-ui/react-hover-card": "^1.1.15",
     "@tailwindcss/vite": "^4.1.13",
     "@tanstack/react-query": "^5.89.0",
     "clsx": "^2.1.1",

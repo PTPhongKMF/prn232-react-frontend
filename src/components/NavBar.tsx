@@ -17,9 +17,9 @@ import {
 import { useProfile } from "src/hooks/useAuth";
 import { Cookies } from "typescript-cookie";
 import { useQueryClient } from "@tanstack/react-query";
-import { useState } from "react";
 import { useUser } from "src/stores/userStore";
 import { useCart } from "src/stores/cartStore";
+import { HoverCard, HoverCardContent, HoverCardTrigger } from "src/components/libs/shadcn/hover-card";
 
 export default function NavBar() {
   const { data: user, isSuccess } = useProfile();
@@ -27,7 +27,6 @@ export default function NavBar() {
   const { items } = useCart();
   const queryClient = useQueryClient();
   const navigate = useNavigate();
-  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
 
   const handleLogout = () => {
     Cookies.remove("token");
@@ -107,80 +106,69 @@ export default function NavBar() {
           )}
 
           {isSuccess && user ? (
-            <div className="relative">
-              <button
-                onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-                className="flex items-center gap-2 font-semibold text-gray-700 cursor-pointer"
-              >
-                <UserCircle className="text-blue-600" />
-                <span>Welcome, {user.name}!</span>
-              </button>
-              {isDropdownOpen && (
-                <div className="absolute right-0 mt-2 w-56 rounded-md bg-white shadow-lg">
-                  <div className="py-1">
+            <HoverCard>
+              <HoverCardTrigger asChild>
+                <button className="flex items-center gap-2 font-semibold text-gray-700 cursor-pointer">
+                  <UserCircle className="text-blue-600" />
+                  <span>Welcome, {user.name}!</span>
+                </button>
+              </HoverCardTrigger>
+              <HoverCardContent className="w-56 p-0 bg-white border-0" align="end">
+                <Link
+                  to="/profile"
+                  className="flex w-full items-center px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-100"
+                >
+                  <LayoutDashboard className="mr-2 h-4 w-4" />
+                  Profile
+                </Link>
+                {user.role === "Admin" && (
+                  <>
                     <Link
-                      to="/profile"
+                      to="/admin"
                       className="flex w-full items-center px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-100"
-                      onClick={() => setIsDropdownOpen(false)}
                     >
-                      <LayoutDashboard className="mr-2 h-4 w-4" />
-                      Profile
-                    </Link>
-                    {user.role === "Admin" && (
-                      <>
-                        <Link
-                          to="/admin"
-                          className="flex w-full items-center px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-100"
-                          onClick={() => setIsDropdownOpen(false)}
-                        >
-                          <Shield className="mr-2 h-4 w-4" />
-                          User Management
-                        </Link>
-                        <Link
-                          to="admin/tag-management"
-                          className="flex w-full items-center px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-100"
-                          onClick={() => setIsDropdownOpen(false)}
-                        >
-                          <Tag className="mr-2 h-4 w-4" />
-                          Tag Management
-                        </Link>
-                        <Link
-                          to="/admin/payment-methods"
-                          className="flex w-full items-center px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-100"
-                          onClick={() => setIsDropdownOpen(false)}
-                        >
-                          <CreditCard className="mr-2 h-4 w-4" />
-                          Payment Methods
-                        </Link>
-                      </>
-                    )}
-                    <Link
-                      to="/upload"
-                      className="flex w-full items-center px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-100"
-                      onClick={() => setIsDropdownOpen(false)}
-                    >
-                      <Upload className="mr-2 h-4 w-4" />
-                      Upload
+                      <Shield className="mr-2 h-4 w-4" />
+                      User Management
                     </Link>
                     <Link
-                      to={`/slides/user/${user.id}`}
+                      to="admin/tag-management"
                       className="flex w-full items-center px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-100"
-                      onClick={() => setIsDropdownOpen(false)}
                     >
-                      <BookOpen className="mr-2 h-4 w-4" />
-                      My Slides
+                      <Tag className="mr-2 h-4 w-4" />
+                      Tag Management
                     </Link>
-                    <button
-                      onClick={handleLogout}
-                      className="flex w-full items-center px-4 py-2 text-left text-sm text-red-600 hover:bg-gray-100 cursor-pointer"
+                    <Link
+                      to="/admin/payment-methods"
+                      className="flex w-full items-center px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-100"
                     >
-                      <LogOut className="mr-2 h-4 w-4" />
-                      Logout
-                    </button>
-                  </div>
-                </div>
-              )}
-            </div>
+                      <CreditCard className="mr-2 h-4 w-4" />
+                      Payment Methods
+                    </Link>
+                  </>
+                )}
+                <Link
+                  to="/upload"
+                  className="flex w-full items-center px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-100"
+                >
+                  <Upload className="mr-2 h-4 w-4" />
+                  Upload
+                </Link>
+                <Link
+                  to={`/slides/user/${user.id}`}
+                  className="flex w-full items-center px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-100"
+                >
+                  <BookOpen className="mr-2 h-4 w-4" />
+                  My Slides
+                </Link>
+                <button
+                  onClick={handleLogout}
+                  className="flex w-full items-center px-4 py-2 text-left text-sm text-red-600 hover:bg-gray-100 cursor-pointer"
+                >
+                  <LogOut className="mr-2 h-4 w-4" />
+                  Logout
+                </button>
+              </HoverCardContent>
+            </HoverCard>
           ) : (
             <>
               <Link to="/login" className="font-semibold text-gray-600 transition-colors hover:text-blue-600">
