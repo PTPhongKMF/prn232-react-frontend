@@ -4,7 +4,6 @@ import {
   LogOut,
   LayoutDashboard,
   Shield,
-  BookMarked,
   BookOpenText,
   BadgeQuestionMark,
   Upload,
@@ -45,13 +44,22 @@ export default function NavBar() {
         </Link>
 
         <div className="flex items-center gap-12">
-          <Link
+          {/* <Link
             to="/slides"
             className="flex justify-center items-center gap-1 font-medium text-gray-600 transition-colors hover:text-blue-600"
           >
             <BookMarked />
             Slides
+          </Link> */}
+
+          <Link
+            to="/explore"
+            className="flex items-center gap-2 font-medium text-gray-600 transition-colors hover:text-blue-600"
+          >
+            <Search size={18} />
+            Explore
           </Link>
+
           <Link
             to="/exams"
             className="flex justify-center items-center gap-2 font-medium text-gray-600 transition-colors hover:text-blue-600"
@@ -72,25 +80,20 @@ export default function NavBar() {
 
           <div className="h-5 w-0.5 bg-black" />
 
-          <Link
-            to="/explore"
-            className="flex items-center gap-2 font-medium text-gray-600 transition-colors hover:text-blue-600"
-          >
-            <Search size={18} />
-            Explore
-          </Link>
-          <Link
-            to="/payment"
-            className="relative flex items-center gap-2 font-medium text-gray-600 transition-colors hover:text-blue-600"
-          >
-            <ShoppingCart size={18} />
-            {items.length > 0 && (
-              <span className="absolute -top-2 -right-2 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-xs text-white">
-                {items.length}
-              </span>
-            )}
-            Cart
-          </Link>
+          {user && (
+            <Link
+              to="/payment"
+              className="relative flex items-center gap-2 font-medium text-gray-600 transition-colors hover:text-blue-600"
+            >
+              <ShoppingCart size={18} />
+              {items.length > 0 && (
+                <span className="absolute -top-2 -right-2 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-xs text-white">
+                  {items.length}
+                </span>
+              )}
+              Cart
+            </Link>
+          )}
 
           {isSuccess && user?.role === "Student" && (
             <Link
