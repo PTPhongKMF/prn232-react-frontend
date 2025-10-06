@@ -1,8 +1,8 @@
 import { Loader2, MessageCircleQuestionMark } from "lucide-react";
 import Pagination from "src/components/Pagination";
-import CreateQuestionDialog from "src/components/CreateQuestionDialog";
-import QuestionFilters from "src/components/QuestionFilters";
-import QuestionItem from "src/components/QuestionItem";
+import CreateQuestionDialog from "src/components/questions/CreateQuestionDialog";
+import QuestionFilters from "src/components/questions/QuestionFilters";
+import QuestionItem from "src/components/questions/QuestionItem";
 import { useEffect, useState } from "react";
 import { AnimatedGridPattern } from "src/components/libs/magicui/animated-grid-pattern";
 import { TypingAnimation } from "src/components/libs/magicui/typing-animation";

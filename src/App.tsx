@@ -45,7 +45,9 @@ function App() {
           <Route path="questionbank" element={<QuestionBank />} />
         </Route>
 
-        <Route path="admin/tag-management" element={<TagManagement />} />
+        <Route element={<ProtectedRoute allowedRoles={["Admin"]} />}>
+          <Route path="admin/tag-management" element={<TagManagement />} />
+        </Route>
 
         <Route path="admin" element={<Admin />} />
         <Route path="admin/payment-methods" element={<PaymentMethodsAdmin />} />

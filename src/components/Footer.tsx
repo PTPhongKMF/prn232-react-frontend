@@ -3,7 +3,7 @@ import { Link } from "react-router";
 
 export default function Footer() {
   return (
-    <footer className="bg-amber-50 border-t border-amber-200">
+    <footer className="bg-amber-100 border-t border-amber-200">
       <div className="container mx-auto px-6 py-8">
         <div className="flex flex-col items-center text-center md:flex-row md:justify-between md:text-left">
           {/* Brand and Copyright */}

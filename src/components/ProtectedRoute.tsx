@@ -12,5 +12,5 @@ export default function ProtectedRoute({ allowedRoles }: ProtectedRouteProps) {
     return <Outlet />;
   }
 
-  return <Navigate to="/login" />;
+  return <Navigate to="/" />;
 }
