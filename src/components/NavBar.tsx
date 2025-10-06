@@ -12,6 +12,7 @@ import {
   ShoppingCart,
   CreditCard,
   BookText,
+  Tag,
 } from "lucide-react";
 import { useProfile } from "src/hooks/useAuth";
 import { Cookies } from "typescript-cookie";
@@ -134,6 +135,14 @@ export default function NavBar() {
                         >
                           <Shield className="mr-2 h-4 w-4" />
                           User Management
+                        </Link>
+                        <Link
+                          to="admin/tag-management"
+                          className="flex w-full items-center px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-100"
+                          onClick={() => setIsDropdownOpen(false)}
+                        >
+                          <Tag className="mr-2 h-4 w-4" />
+                          Tag Management
                         </Link>
                         <Link
                           to="/admin/payment-methods"

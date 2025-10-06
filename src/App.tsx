@@ -17,6 +17,7 @@ import Explore from "src/pages/Explore";
 import Payment from "src/pages/Payment";
 import MyLibrary from "src/pages/MyLibrary";
 import PaymentMethodsAdmin from "./pages/PaymentMethodsAdmin";
+import TagManagement from "src/pages/TagManagement";
 
 function App() {
   const user = useUser((s) => s.user);
@@ -43,6 +44,8 @@ function App() {
         <Route element={<ProtectedRoute allowedRoles={["Teacher", "Admin"]} />}>
           <Route path="questionbank" element={<QuestionBank />} />
         </Route>
+
+        <Route path="admin/tag-management" element={<TagManagement />} />
 
         <Route path="admin" element={<Admin />} />
         <Route path="admin/payment-methods" element={<PaymentMethodsAdmin />} />
