@@ -40,6 +40,51 @@ export function usePaymentMethods() {
   });
 }
 
+export function useCreatePaymentMethodMutation() {
+  const queryClient = useQueryClient();
+  return useMutation<PaymentMethod, HTTPError, { name: string }>({
+    mutationFn: async (newMethod) => {
+      const response = await kyAspDotnet
+        .post("api/PaymentMethods", { json: newMethod })
+        .json();
+      const parsed = v.parse(createApiSuccessResponseSchema(v.any()), response);
+      return parsed.data as PaymentMethod;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["paymentMethods"] });
+    },
+  });
+}
+
+export function useUpdatePaymentMethodMutation() {
+  const queryClient = useQueryClient();
+  return useMutation<PaymentMethod, HTTPError, PaymentMethod>({
+    mutationFn: async (method) => {
+      const response = await kyAspDotnet
+        .put(`api/PaymentMethods/${method.id}`, { json: { name: method.name } })
+        .json();
+      const parsed = v.parse(createApiSuccessResponseSchema(v.any()), response);
+      return parsed.data as PaymentMethod;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["paymentMethods"] });
+    },
+  });
+}
+
+export function useDeletePaymentMethodMutation() {
+  const queryClient = useQueryClient();
+  return useMutation<unknown, HTTPError, number>({
+    mutationFn: async (methodId) => {
+      return await kyAspDotnet.delete(`api/PaymentMethods/${methodId}`).json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["paymentMethods"] });
+    },
+  });
+}
+
+
 export function usePurchaseMutation() {
     return useMutation<{data: ReceiptResponse}, HTTPError, { slideIds: number[]; paymentMethodId: number }>({
         mutationFn: async (purchaseData) => {

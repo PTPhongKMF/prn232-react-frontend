@@ -6,7 +6,6 @@ import Register from "./pages/Register";
 import Test from "src/pages/Test";
 import Profile from "src/pages/Profile";
 import Admin from "src/pages/Admin";
-import Slides from "src/pages/Slides/Slides";
 import Exams from "src/pages/Exams/Exams";
 import { useUser } from "src/stores/userStore";
 import { Cookies } from "typescript-cookie";
@@ -18,6 +17,7 @@ import Payment from "src/pages/Payment";
 import MyLibrary from "src/pages/MyLibrary";
 import PaymentMethodsAdmin from "./pages/PaymentMethodsAdmin";
 import TagManagement from "src/pages/TagManagement";
+import Slides from "src/pages/Slides";
 
 function App() {
   const user = useUser((s) => s.user);
@@ -35,8 +35,6 @@ function App() {
         <Route path="explore" element={<Explore />} />
         <Route path="login" element={<Login />} />
         <Route path="register" element={<Register />} />
-
-        <Route path="/slides" element={<Slides />} />
         <Route path="/exams" element={<Exams />} />
 
         <Route path="profile" element={<Profile />} />
