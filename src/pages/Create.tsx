@@ -1,25 +1,18 @@
 import { useState, useRef, useCallback, useEffect } from "react";
 import { 
   Save, 
-  Download, 
   Undo, 
   Redo, 
   Type, 
   Image, 
-  Square, 
-  Circle, 
-  Triangle,
+  Square,
+  Table,
+  Shapes,
+  Grid3X3,
   Trash2,
   FileText,
-  Shapes,
   Upload,
-  Folder,
   Plus,
-  Grid3X3,
-  Table,
-  ImageIcon,
-  Sparkles,
-  ChevronLeft,
   ChevronRight,
   Bold,
   Italic,
@@ -30,10 +23,15 @@ import {
   AlignJustify,
   List,
   Minus,
-  Palette
+  Palette,
+  Copy,
+  Clipboard,
+  Layers,
+  FileDown
 } from "lucide-react";
 import { cn } from "src/utils/cn";
 import { useCreateSlideMutation } from "src/hooks/useSlides";
+import PptxGenJS from "pptxgenjs";
 
 // Types
 interface SlideElement {
@@ -66,19 +64,26 @@ interface Slide {
 
 export default function Create() {
   const canvasRef = useRef<HTMLDivElement>(null);
-  const [slides, setSlides] = useState<Slide[]>([
+  const initialSlides = [
     {
       id: '1',
       elements: [],
       backgroundColor: '#ffffff'
     }
-  ]);
+  ];
+  
+  const [slides, setSlides] = useState<Slide[]>(initialSlides);
+  
+  // Debug: Log when slides state changes
+  useEffect(() => {
+    console.log('Slides state changed:', slides.length, slides);
+  }, [slides]);
   const [currentSlideIndex, setCurrentSlideIndex] = useState(0);
   const [selectedElement, setSelectedElement] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'design' | 'elements' | 'text' | 'uploads'>('design');
   const [hoveredTab, setHoveredTab] = useState<string | null>(null);
   const [isSidebarExpanded, setIsSidebarExpanded] = useState(false);
-  const [history, setHistory] = useState<Slide[][]>([slides]);
+  const [history, setHistory] = useState<Slide[][]>([initialSlides]);
   const [historyIndex, setHistoryIndex] = useState(0);
   const [isDragging, setIsDragging] = useState(false);
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
@@ -86,6 +91,11 @@ export default function Create() {
   const [isResizing, setIsResizing] = useState(false);
   const [resizeHandle, setResizeHandle] = useState<string | null>(null);
   const [showTextToolbar, setShowTextToolbar] = useState(false);
+  const [savedSelection, setSavedSelection] = useState<{ start: number; end: number } | null>(null);
+  const [contextMenu, setContextMenu] = useState<{ x: number; y: number; slideIndex: number } | null>(null);
+  const [copiedSlide, setCopiedSlide] = useState<Slide | null>(null);
+  const [isDraggingSlide, setIsDraggingSlide] = useState(false);
+  const [dragSlideIndex, setDragSlideIndex] = useState<number | null>(null);
   const [showSaveDialog, setShowSaveDialog] = useState(false);
   const [slideTitle, setSlideTitle] = useState('');
   const [slideTopic, setSlideTopic] = useState('');
@@ -96,32 +106,39 @@ export default function Create() {
   const createSlideMutation = useCreateSlideMutation();
 
   // Add element to slide
-  const addElement = useCallback((type: SlideElement['type'], textStyle?: 'heading' | 'subheading' | 'body') => {
+  const addElement = useCallback((type: SlideElement['type'], textStyle?: 'heading' | 'subheading' | 'body', symbol?: string) => {
     let content = '';
     let fontSize = 16;
     let fontWeight: 'normal' | 'bold' = 'normal';
     
     if (type === 'text') {
-      switch (textStyle) {
-        case 'heading':
-          content = 'Add a heading';
-          fontSize = 32;
-          fontWeight = 'bold';
-          break;
-        case 'subheading':
-          content = 'Add a subheading';
-          fontSize = 24;
-          fontWeight = 'bold';
-          break;
-        case 'body':
-          content = 'Add a little bit of body text';
-          fontSize = 16;
-          fontWeight = 'normal';
-          break;
-        default:
-          content = 'Text';
-          fontSize = 16;
-          fontWeight = 'normal';
+      if (symbol) {
+        // Math symbol
+        content = symbol;
+        fontSize = 48;
+        fontWeight = 'bold';
+      } else {
+        switch (textStyle) {
+          case 'heading':
+            content = 'Add a heading';
+            fontSize = 32;
+            fontWeight = 'bold';
+            break;
+          case 'subheading':
+            content = 'Add a subheading';
+            fontSize = 24;
+            fontWeight = 'bold';
+            break;
+          case 'body':
+            content = 'Add a little bit of body text';
+            fontSize = 16;
+            fontWeight = 'normal';
+            break;
+          default:
+            content = 'Text';
+            fontSize = 16;
+            fontWeight = 'normal';
+        }
       }
     }
 
@@ -302,6 +319,19 @@ export default function Create() {
     });
     setSlides(newSlides);
     saveToHistory(newSlides);
+    
+    // Restore selection after style update
+    setTimeout(() => {
+      const textareas = document.querySelectorAll('textarea');
+      const activeTextarea = Array.from(textareas).find(ta => 
+        ta === document.activeElement || ta.parentElement?.contains(document.activeElement)
+      ) as HTMLTextAreaElement;
+      
+      if (activeTextarea && savedSelection) {
+        activeTextarea.focus();
+        activeTextarea.setSelectionRange(savedSelection.start, savedSelection.end);
+      }
+    }, 50);
   };
 
   // Get current text element
@@ -624,8 +654,68 @@ export default function Create() {
   // Add keyboard shortcuts
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      // Don't handle shortcuts when save dialog is open
+      if (showSaveDialog) {
+        return;
+      }
+      
       if (e.key === 'Delete' && selectedElement) {
-        handleDeleteElement(selectedElement);
+        // Delete selected element
+        setSlides(prevSlides => {
+          const newSlides = prevSlides.map((slide, index) => {
+            if (index === currentSlideIndex) {
+              return {
+                ...slide,
+                elements: slide.elements.filter(el => el.id !== selectedElement)
+              };
+            }
+            return slide;
+          });
+          saveToHistory(newSlides);
+          return newSlides;
+        });
+        setSelectedElement(null);
+      } else if (e.key === 'Escape') {
+        setContextMenu(null);
+      } else if (e.ctrlKey || e.metaKey) {
+        if (e.key === 'c' && !selectedElement) {
+          // Copy current slide
+          e.preventDefault();
+          setCopiedSlide(slides[currentSlideIndex]);
+        } else if (e.key === 'v' && copiedSlide && !selectedElement) {
+          // Paste slide after current
+          e.preventDefault();
+          const newSlide = {
+            ...copiedSlide,
+            id: `slide-${Date.now()}`,
+            elements: copiedSlide.elements.map(el => ({
+              ...el,
+              id: `element-${Date.now()}-${Math.random()}`
+            }))
+          };
+          const newSlides = [...slides];
+          newSlides.splice(currentSlideIndex + 1, 0, newSlide);
+          setSlides(newSlides);
+          saveToHistory(newSlides);
+          setCurrentSlideIndex(currentSlideIndex + 1);
+        } else if (e.key === 'd' && !selectedElement) {
+          // Duplicate current slide
+          e.preventDefault();
+          const currentSlide = slides[currentSlideIndex];
+          const duplicatedSlide = {
+            ...currentSlide,
+            id: `slide-${Date.now()}`,
+            elements: currentSlide.elements.map(el => ({
+              ...el,
+              id: `element-${Date.now()}-${Math.random()}`
+            }))
+          };
+          const newSlides = [...slides];
+          newSlides.splice(currentSlideIndex + 1, 0, duplicatedSlide);
+          setSlides(newSlides);
+          saveToHistory(newSlides);
+          setCurrentSlideIndex(currentSlideIndex + 1);
+        }
       }
     };
 
@@ -633,7 +723,46 @@ export default function Create() {
     return () => {
       document.removeEventListener('keydown', handleKeyDown);
     };
-  }, [selectedElement]);
+  }, [selectedElement, currentSlideIndex, contextMenu, copiedSlide, showSaveDialog, slides, saveToHistory]);
+
+  // Close context menu when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (contextMenu && !(e.target as Element).closest('.context-menu')) {
+        setContextMenu(null);
+      }
+    };
+
+    if (contextMenu) {
+      document.addEventListener('click', handleClickOutside);
+      return () => {
+        document.removeEventListener('click', handleClickOutside);
+      };
+    }
+  }, [contextMenu]);
+
+  // Handle global mouse events for slide dragging
+  useEffect(() => {
+    const handleGlobalMouseUp = () => {
+      if (isDraggingSlide) {
+        setIsDraggingSlide(false);
+        setDragSlideIndex(null);
+        document.body.style.cursor = '';
+        
+        // Remove all ring classes
+        document.querySelectorAll('[data-slide-index]').forEach(el => {
+          el.classList.remove('ring-2', 'ring-blue-400');
+        });
+      }
+    };
+
+    if (isDraggingSlide) {
+      document.addEventListener('mouseup', handleGlobalMouseUp);
+      return () => {
+        document.removeEventListener('mouseup', handleGlobalMouseUp);
+      };
+    }
+  }, [isDraggingSlide]);
 
   // Add new slide
   const addSlide = () => {
@@ -648,50 +777,352 @@ export default function Create() {
     saveToHistory(newSlides);
   };
 
+  const duplicateSlide = (slideIndex: number) => {
+    const slideToDuplicate = slides[slideIndex];
+    const duplicatedSlide: Slide = {
+      ...slideToDuplicate,
+      id: `slide-${Date.now()}`,
+      elements: slideToDuplicate.elements.map(element => ({
+        ...element,
+        id: `element-${Date.now()}-${Math.random()}`
+      }))
+    };
+    const newSlides = [...slides];
+    newSlides.splice(slideIndex + 1, 0, duplicatedSlide);
+    setSlides(newSlides);
+    setCurrentSlideIndex(slideIndex + 1);
+    saveToHistory(newSlides);
+    setContextMenu(null);
+  };
+
+  const deleteSlide = (slideIndex: number) => {
+    console.log('deleteSlide called with index:', slideIndex, 'showSaveDialog:', showSaveDialog);
+    if (slides.length <= 1) {
+      alert('Cannot delete the last slide');
+      return;
+    }
+    const newSlides = slides.filter((_, index) => index !== slideIndex);
+    setSlides(newSlides);
+    if (currentSlideIndex >= newSlides.length) {
+      setCurrentSlideIndex(newSlides.length - 1);
+    } else if (currentSlideIndex > slideIndex) {
+      setCurrentSlideIndex(currentSlideIndex - 1);
+    }
+    saveToHistory(newSlides);
+    setContextMenu(null);
+  };
+
+  const handleSlideRightClick = (e: React.MouseEvent, slideIndex: number) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    // Position context menu above the slide thumbnail
+    const rect = e.currentTarget.getBoundingClientRect();
+    const contextMenuHeight = 200; // Approximate height of context menu
+    
+    let y = rect.top - contextMenuHeight - 10; // Position above by default
+    
+    // If not enough space above, position below
+    if (y < 10) {
+      y = rect.bottom + 10;
+    }
+    
+    // Ensure it doesn't go off screen horizontally
+    let x = e.clientX;
+    const contextMenuWidth = 200; // Approximate width of context menu
+    if (x + contextMenuWidth > window.innerWidth) {
+      x = window.innerWidth - contextMenuWidth - 10;
+    }
+    
+    setContextMenu({
+      x,
+      y,
+      slideIndex
+    });
+  };
+
+  const handleSlideClick = (slideIndex: number) => {
+    setCurrentSlideIndex(slideIndex);
+    setContextMenu(null);
+  };
+
+  const copySlide = (slideIndex: number) => {
+    const slideToCopy = slides[slideIndex];
+    setCopiedSlide(slideToCopy);
+    setContextMenu(null);
+  };
+
+  const pasteSlide = (slideIndex: number) => {
+    if (!copiedSlide) return;
+    
+    const pastedSlide: Slide = {
+      ...copiedSlide,
+      id: `slide-${Date.now()}`,
+      elements: copiedSlide.elements.map(element => ({
+        ...element,
+        id: `element-${Date.now()}-${Math.random()}`
+      }))
+    };
+    
+    const newSlides = [...slides];
+    newSlides.splice(slideIndex + 1, 0, pastedSlide);
+    setSlides(newSlides);
+    setCurrentSlideIndex(slideIndex + 1);
+    saveToHistory(newSlides);
+    setContextMenu(null);
+  };
+
+  const handleSlideMouseDown = (e: React.MouseEvent, slideIndex: number) => {
+    // Only start drag if it's not a right click
+    if (e.button !== 0) return;
+    
+    e.preventDefault();
+    setIsDraggingSlide(true);
+    setDragSlideIndex(slideIndex);
+    
+    // Add drag cursor
+    document.body.style.cursor = 'grabbing';
+  };
+
+  const handleSlideMouseUp = (e: React.MouseEvent, slideIndex: number) => {
+    if (!isDraggingSlide || dragSlideIndex === null) return;
+    
+    e.preventDefault();
+    e.stopPropagation();
+    
+    // Reset drag state
+    setIsDraggingSlide(false);
+    setDragSlideIndex(null);
+    document.body.style.cursor = '';
+    
+    // If dropped on different slide, reorder
+    if (dragSlideIndex !== slideIndex) {
+      const newSlides = [...slides];
+      const draggedSlide = newSlides[dragSlideIndex];
+      
+      // Remove from original position
+      newSlides.splice(dragSlideIndex, 1);
+      
+      // Insert at new position
+      const insertIndex = slideIndex > dragSlideIndex ? slideIndex - 1 : slideIndex;
+      newSlides.splice(insertIndex, 0, draggedSlide);
+      
+      setSlides(newSlides);
+      setCurrentSlideIndex(insertIndex);
+      saveToHistory(newSlides);
+    }
+  };
+
+  const handleSlideMouseEnter = (slideIndex: number) => {
+    if (isDraggingSlide && dragSlideIndex !== null && dragSlideIndex !== slideIndex) {
+      // Add visual feedback for drop target
+      const slideElement = document.querySelector(`[data-slide-index="${slideIndex}"]`);
+      if (slideElement) {
+        slideElement.classList.add('ring-2', 'ring-blue-400');
+      }
+    }
+  };
+
+  const handleSlideMouseLeave = (slideIndex: number) => {
+    const slideElement = document.querySelector(`[data-slide-index="${slideIndex}"]`);
+    if (slideElement) {
+      slideElement.classList.remove('ring-2', 'ring-blue-400');
+    }
+  };
+
 
   // Handle save slide
-  const handleSaveSlide = async () => {
-    if (!slideTitle.trim()) {
-      alert('Please enter a slide title');
+  const exportToPowerPoint = () => {
+    if (slides.length === 0) {
+      alert('Please add at least one slide to export');
       return;
     }
 
     try {
-      // Convert slides to a format that can be sent to API
-      const slideData = {
+      // Create new presentation
+      const pptx = new PptxGenJS();
+      
+      // Set presentation properties
+      pptx.layout = 'LAYOUT_16x9'; // 16:9 aspect ratio
+      pptx.author = 'MathSlide Creator';
+      pptx.company = 'MathSlide Learning';
+      pptx.subject = slideTopic || 'Mathematics Presentation';
+      pptx.title = slideTitle || 'Untitled Presentation';
+
+      // Add slides
+      slides.forEach((slide) => {
+        const pptxSlide = pptx.addSlide();
+        
+        // Set slide background
+        pptxSlide.background = { color: slide.backgroundColor || '#ffffff' };
+        
+        // Add elements to slide
+        slide.elements.forEach((element) => {
+          const elementProps: any = {
+            x: (element.x / 800) * 10, // Convert to inches (assuming 800px = 10 inches)
+            y: (element.y / 600) * 5.625, // Convert to inches (assuming 600px = 5.625 inches)
+            w: (element.width / 800) * 10,
+            h: (element.height / 600) * 5.625,
+          };
+
+          switch (element.type) {
+            case 'text':
+              pptxSlide.addText(element.content || 'Text', {
+                ...elementProps,
+                fontSize: parseInt(String(element.style?.fontSize)) || 16,
+                color: element.style?.color || '#000000',
+                bold: element.style?.fontWeight === 'bold',
+                italic: element.style?.fontStyle === 'italic',
+                underline: element.style?.textDecoration === 'underline',
+                align: element.style?.textAlign === 'center' ? 'center' : 
+                       element.style?.textAlign === 'right' ? 'right' : 'left',
+                fontFace: element.style?.fontFamily || 'Arial',
+              });
+              break;
+
+            case 'image':
+              if (element.content) {
+                pptxSlide.addImage({
+                  ...elementProps,
+                  data: element.content, // Base64 data URL
+                });
+              }
+              break;
+
+            case 'shape':
+              pptxSlide.addShape('rect', {
+                ...elementProps,
+                fill: { color: element.style?.backgroundColor || '#f3f4f6' },
+                line: { color: '#d1d5db', width: 1 },
+              });
+              break;
+
+            case 'table':
+              pptxSlide.addTable([
+                [{ text: 'Cell 1', options: { fontSize: 12 } }],
+                [{ text: 'Cell 2', options: { fontSize: 12 } }]
+              ], {
+                ...elementProps,
+                border: { type: 'solid', color: '#d1d5db', pt: 1 },
+                fill: { color: '#ffffff' },
+              });
+              break;
+
+            case 'graphic':
+              pptxSlide.addShape('rect', {
+                ...elementProps,
+                fill: { type: 'gradient', gradientStops: [
+                  { position: 0, color: '#3b82f6' },
+                  { position: 100, color: '#8b5cf6' }
+                ]},
+              });
+              break;
+          }
+        });
+      });
+
+      // Generate and download
+      const fileName = slideTitle 
+        ? `${slideTitle.replace(/[^a-zA-Z0-9]/g, '_')}.pptx`
+        : `MathPresentation_${new Date().toISOString().split('T')[0]}.pptx`;
+      
+      pptx.writeFile({ fileName });
+      
+      console.log(`PowerPoint exported: ${fileName} with ${slides.length} slides`);
+      
+    } catch (error) {
+      console.error('Error exporting PowerPoint:', error);
+      alert('Failed to export PowerPoint file. Please try again.');
+    }
+  };
+
+  const handleSavePresentation = async () => {
+    if (!slideTitle.trim()) {
+      alert('Please enter a presentation title');
+      return;
+    }
+
+    if (!slideTopic.trim()) {
+      alert('Please enter a presentation topic');
+      return;
+    }
+
+    if (slidePrice < 0) {
+      alert('Price must be non-negative');
+      return;
+    }
+
+    if (!slideGrade || slideGrade < 1 || slideGrade > 12) {
+      alert('Please enter a valid grade (1-12)');
+      return;
+    }
+
+    if (slides.length === 0) {
+      alert('Please add at least one slide to save');
+      return;
+    }
+
+    try {
+      // Prepare presentation data with all slides
+      const presentationData = {
         title: slideTitle,
-        topic: slideTopic || 'General',
+        topic: slideTopic,
         price: slidePrice,
         grade: slideGrade,
         isPublished: false,
         slidePages: slides.map((slide, index) => ({
           orderNumber: index + 1,
-          title: `Page ${index + 1}`,
+          title: `Slide ${index + 1}`,
           content: JSON.stringify({
-            elements: slide.elements,
-            backgroundColor: slide.backgroundColor
+            elements: slide.elements.map(element => ({
+              ...element,
+              // Ensure all elements have proper styling
+              style: {
+                fontSize: element.style?.fontSize || 16,
+                fontFamily: element.style?.fontFamily || 'Arial',
+                color: element.style?.color || '#000000',
+                fontWeight: element.style?.fontWeight || 'normal',
+                fontStyle: element.style?.fontStyle || 'normal',
+                textDecoration: element.style?.textDecoration || 'none',
+                textAlign: element.style?.textAlign || 'left',
+                backgroundColor: element.style?.backgroundColor || 'transparent',
+                borderRadius: element.style?.borderRadius || '0px'
+              }
+            })),
+            backgroundColor: slide.backgroundColor || '#ffffff'
           })
         }))
       };
 
+      console.log('Saving presentation with:', {
+        title: presentationData.title,
+        topic: presentationData.topic,
+        price: presentationData.price,
+        grade: presentationData.grade,
+        totalSlides: presentationData.slidePages.length,
+        totalElements: slides.reduce((sum, slide) => sum + slide.elements.length, 0)
+      });
+
       // Create a dummy file for now (in real implementation, you'd generate a file from slides)
-      const dummyFile = new File(['dummy content'], 'slide.pptx', { type: 'application/vnd.openxmlformats-officedocument.presentationml.presentation' });
+      const dummyFile = new File(['dummy content'], `${slideTitle.replace(/[^a-zA-Z0-9]/g, '_')}.pptx`, { 
+        type: 'application/vnd.openxmlformats-officedocument.presentationml.presentation' 
+      });
 
       await createSlideMutation.mutateAsync({
-        slideDto: slideData,
+        slideDto: presentationData,
         file: dummyFile
       });
 
-      alert('Slide saved successfully!');
+      alert(`Presentation "${slideTitle}" saved successfully with ${slides.length} slides!`);
       setShowSaveDialog(false);
-      // Reset form
+      // Reset form but keep slides
       setSlideTitle('');
       setSlideTopic('');
       setSlidePrice(0);
       setSlideGrade(undefined);
     } catch (error) {
-      console.error('Failed to save slide:', error);
-      alert('Failed to save slide. Please try again.');
+      console.error('Failed to save presentation:', error);
+      alert('Failed to save presentation. Please try again.');
     }
   };
 
@@ -721,15 +1152,18 @@ export default function Create() {
 
         <div className="flex items-center gap-2">
           <button 
-            onClick={() => setShowSaveDialog(true)}
+            onClick={exportToPowerPoint}
             className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
           >
-            <Save size={16} />
-            Save
+            <FileDown size={16} />
+            Export PPTX
           </button>
-          <button className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700">
-            <Download size={16} />
-            Export
+          <button 
+            onClick={() => setShowSaveDialog(true)}
+            className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
+          >
+            <Save size={16} />
+            Save to Cloud
           </button>
         </div>
       </div>
@@ -777,12 +1211,41 @@ export default function Create() {
 
           {/* Font Color */}
           <div className="flex items-center gap-1">
-            <input
-              type="color"
-              value={getCurrentTextElement()?.style?.color || '#000000'}
-              onChange={(e) => updateTextStyle('color', e.target.value)}
-              className="w-8 h-8 border border-gray-300 rounded cursor-pointer"
-            />
+            <div className="relative">
+              <input
+                type="color"
+                value={getCurrentTextElement()?.style?.color || '#000000'}
+                onChange={(e) => updateTextStyle('color', e.target.value)}
+                onMouseDown={() => {
+                  // Save current selection before opening color picker
+                  const activeElement = document.activeElement as HTMLTextAreaElement;
+                  if (activeElement && activeElement.tagName === 'TEXTAREA') {
+                    setSavedSelection({
+                      start: activeElement.selectionStart || 0,
+                      end: activeElement.selectionEnd || 0
+                    });
+                    console.log('Saved selection:', activeElement.selectionStart, activeElement.selectionEnd);
+                  }
+                }}
+                onBlur={() => {
+                  // Restore focus to textarea when color picker closes
+                  setTimeout(() => {
+                    const textareas = document.querySelectorAll('textarea');
+                    const activeTextarea = Array.from(textareas).find(ta => 
+                      ta.getAttribute('data-element-id') === selectedElement
+                    ) as HTMLTextAreaElement;
+                    
+                    if (activeTextarea && savedSelection) {
+                      activeTextarea.focus();
+                      activeTextarea.setSelectionRange(savedSelection.start, savedSelection.end);
+                      console.log('Restored selection:', savedSelection.start, savedSelection.end);
+                    }
+                  }, 100);
+                }}
+                className="w-8 h-8 border border-gray-300 rounded cursor-pointer"
+                title="Font Color"
+              />
+            </div>
             <Palette size={16} className="text-gray-500" />
           </div>
 
@@ -958,7 +1421,7 @@ export default function Create() {
                 )}
               >
                 <Shapes size={20} />
-                <span>Elements</span>
+                <span>Math</span>
               </button>
               
               <button
@@ -1009,31 +1472,12 @@ export default function Create() {
                 <span>Uploads</span>
               </button>
               
-              <div className="border-t border-gray-200 my-2"></div>
-              
-              <button 
-                onMouseEnter={() => setHoveredTab('projects')}
-                onMouseLeave={() => setHoveredTab(null)}
-                className="p-4 flex flex-col items-center gap-1 text-xs font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-50 transition-all duration-200"
-              >
-                <Folder size={20} />
-                <span>Projects</span>
-              </button>
-              
-              <button 
-                onMouseEnter={() => setHoveredTab('apps')}
-                onMouseLeave={() => setHoveredTab(null)}
-                className="p-4 flex flex-col items-center gap-1 text-xs font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-50 transition-all duration-200"
-              >
-                <Sparkles size={20} />
-                <span>Apps</span>
-              </button>
             </div>
           </div>
 
           {/* Expandable Content Panel */}
           {((activeTab === 'design' && isSidebarExpanded) || hoveredTab === 'design') && (
-            <div className="w-80 bg-white border-r border-gray-200 shadow-lg transition-all duration-300 ease-in-out relative">
+            <div className="w-80 bg-white border-r border-gray-200 shadow-lg transition-all duration-300 ease-in-out relative h-full flex flex-col">
               {/* Collapse Button - Fixed position at right edge */}
               {isSidebarExpanded && activeTab === 'design' && (
                 <button
@@ -1043,7 +1487,7 @@ export default function Create() {
                   <ChevronRight size={14} className="text-gray-600" />
                 </button>
               )}
-              <div className="p-6">
+              <div className="p-6 flex-1 overflow-y-auto">
               {/* Search Bar */}
               <div className="mb-6">
                 <div className="relative">
@@ -1094,80 +1538,165 @@ export default function Create() {
           </div>
         )}
 
-          {/* Elements Tab */}
-          {((activeTab === 'elements' && isSidebarExpanded) || hoveredTab === 'elements') && (
-            <div className="w-80 bg-white border-r border-gray-200 shadow-lg transition-all duration-300 ease-in-out relative">
-              {/* Collapse Button - Fixed position at right edge */}
-              {isSidebarExpanded && activeTab === 'elements' && (
-                <button
-                  onClick={() => setIsSidebarExpanded(false)}
-                  className="absolute -right-3 top-1/2 transform -translate-y-1/2 w-6 h-6 bg-white border border-gray-200 hover:bg-gray-50 rounded-full flex items-center justify-center shadow-md transition-colors duration-200 z-10"
-                >
-                  <ChevronRight size={14} className="text-gray-600" />
-                </button>
-              )}
-              <div className="p-6">
+        {/* Math Elements Tab */}
+        {((activeTab === 'elements' && isSidebarExpanded) || hoveredTab === 'elements') && (
+          <div className="w-80 bg-white border-r border-gray-200 shadow-lg transition-all duration-300 ease-in-out relative h-full flex flex-col">
+            {/* Collapse Button */}
+            {isSidebarExpanded && activeTab === 'elements' && (
+              <button
+                onClick={() => setIsSidebarExpanded(false)}
+                className="absolute -right-3 top-1/2 transform -translate-y-1/2 w-6 h-6 bg-white border border-gray-200 hover:bg-gray-50 rounded-full flex items-center justify-center shadow-md transition-colors duration-200 z-10"
+              >
+                <ChevronRight size={14} className="text-gray-600" />
+              </button>
+            )}
+            
+            <div className="p-6 flex-1 overflow-y-auto">
               <div className="space-y-6">
+                {/* Basic Operations */}
                 <div>
-                  <h3 className="text-sm font-semibold text-gray-900 mb-3">Shapes</h3>
+                  <h3 className="text-sm font-semibold text-gray-900 mb-3">Basic Operations</h3>
                   <div className="grid grid-cols-4 gap-2">
-                    <button
-                      onClick={() => addElement('shape')}
-                      className="p-3 border border-gray-200 rounded-lg hover:border-gray-300 flex flex-col items-center gap-1 hover:shadow-md transition-all duration-200"
-                    >
-                      <Square size={20} />
-                      <span className="text-xs">Rectangle</span>
+                    <button onClick={() => addElement('text', 'heading', '+')} className="p-3 border border-gray-200 rounded-lg hover:border-purple-300 hover:bg-purple-50 flex flex-col items-center gap-1 hover:shadow-md transition-all duration-200">
+                      <span className="text-2xl">+</span>
+                      <span className="text-xs">Plus</span>
                     </button>
-                    <button
-                      onClick={() => addElement('shape')}
-                      className="p-3 border border-gray-200 rounded-lg hover:border-gray-300 flex flex-col items-center gap-1 hover:shadow-md transition-all duration-200"
-                    >
-                      <Circle size={20} />
+                    <button onClick={() => addElement('text', 'heading', '−')} className="p-3 border border-gray-200 rounded-lg hover:border-purple-300 hover:bg-purple-50 flex flex-col items-center gap-1 hover:shadow-md transition-all duration-200">
+                      <span className="text-2xl">−</span>
+                      <span className="text-xs">Minus</span>
+                    </button>
+                    <button onClick={() => addElement('text', 'heading', '×')} className="p-3 border border-gray-200 rounded-lg hover:border-purple-300 hover:bg-purple-50 flex flex-col items-center gap-1 hover:shadow-md transition-all duration-200">
+                      <span className="text-2xl">×</span>
+                      <span className="text-xs">Multiply</span>
+                    </button>
+                    <button onClick={() => addElement('text', 'heading', '÷')} className="p-3 border border-gray-200 rounded-lg hover:border-purple-300 hover:bg-purple-50 flex flex-col items-center gap-1 hover:shadow-md transition-all duration-200">
+                      <span className="text-2xl">÷</span>
+                      <span className="text-xs">Divide</span>
+                    </button>
+                    <button onClick={() => addElement('text', 'heading', '=')} className="p-3 border border-gray-200 rounded-lg hover:border-purple-300 hover:bg-purple-50 flex flex-col items-center gap-1 hover:shadow-md transition-all duration-200">
+                      <span className="text-2xl">=</span>
+                      <span className="text-xs">Equals</span>
+                    </button>
+                    <button onClick={() => addElement('text', 'heading', '≠')} className="p-3 border border-gray-200 rounded-lg hover:border-purple-300 hover:bg-purple-50 flex flex-col items-center gap-1 hover:shadow-md transition-all duration-200">
+                      <span className="text-2xl">≠</span>
+                      <span className="text-xs">Not Equal</span>
+                    </button>
+                    <button onClick={() => addElement('text', 'heading', '<')} className="p-3 border border-gray-200 rounded-lg hover:border-purple-300 hover:bg-purple-50 flex flex-col items-center gap-1 hover:shadow-md transition-all duration-200">
+                      <span className="text-2xl">&lt;</span>
+                      <span className="text-xs">Less</span>
+                    </button>
+                    <button onClick={() => addElement('text', 'heading', '>')} className="p-3 border border-gray-200 rounded-lg hover:border-purple-300 hover:bg-purple-50 flex flex-col items-center gap-1 hover:shadow-md transition-all duration-200">
+                      <span className="text-2xl">&gt;</span>
+                      <span className="text-xs">Greater</span>
+                    </button>
+                  </div>
+                </div>
+
+                {/* Fractions */}
+                <div>
+                  <h3 className="text-sm font-semibold text-gray-900 mb-3">Fractions & Decimals</h3>
+                  <div className="grid grid-cols-4 gap-2">
+                    <button onClick={() => addElement('text', 'heading', '½')} className="p-3 border border-gray-200 rounded-lg hover:border-purple-300 hover:bg-purple-50 flex flex-col items-center gap-1 hover:shadow-md transition-all duration-200">
+                      <span className="text-lg">½</span>
+                      <span className="text-xs">Half</span>
+                    </button>
+                    <button onClick={() => addElement('text', 'heading', '⅓')} className="p-3 border border-gray-200 rounded-lg hover:border-purple-300 hover:bg-purple-50 flex flex-col items-center gap-1 hover:shadow-md transition-all duration-200">
+                      <span className="text-lg">⅓</span>
+                      <span className="text-xs">Third</span>
+                    </button>
+                    <button onClick={() => addElement('text', 'heading', '¼')} className="p-3 border border-gray-200 rounded-lg hover:border-purple-300 hover:bg-purple-50 flex flex-col items-center gap-1 hover:shadow-md transition-all duration-200">
+                      <span className="text-lg">¼</span>
+                      <span className="text-xs">Quarter</span>
+                    </button>
+                    <button onClick={() => addElement('text', 'heading', '⅔')} className="p-3 border border-gray-200 rounded-lg hover:border-purple-300 hover:bg-purple-50 flex flex-col items-center gap-1 hover:shadow-md transition-all duration-200">
+                      <span className="text-lg">⅔</span>
+                      <span className="text-xs">Two Thirds</span>
+                    </button>
+                    <button onClick={() => addElement('text', 'heading', '¾')} className="p-3 border border-gray-200 rounded-lg hover:border-purple-300 hover:bg-purple-50 flex flex-col items-center gap-1 hover:shadow-md transition-all duration-200">
+                      <span className="text-lg">¾</span>
+                      <span className="text-xs">Three Fourths</span>
+                    </button>
+                    <button onClick={() => addElement('text', 'heading', '%')} className="p-3 border border-gray-200 rounded-lg hover:border-purple-300 hover:bg-purple-50 flex flex-col items-center gap-1 hover:shadow-md transition-all duration-200">
+                      <span className="text-lg">%</span>
+                      <span className="text-xs">Percent</span>
+                    </button>
+                    <button onClick={() => addElement('text', 'heading', '‰')} className="p-3 border border-gray-200 rounded-lg hover:border-purple-300 hover:bg-purple-50 flex flex-col items-center gap-1 hover:shadow-md transition-all duration-200">
+                      <span className="text-lg">‰</span>
+                      <span className="text-xs">Per mille</span>
+                    </button>
+                    <button onClick={() => addElement('text', 'heading', '°')} className="p-3 border border-gray-200 rounded-lg hover:border-purple-300 hover:bg-purple-50 flex flex-col items-center gap-1 hover:shadow-md transition-all duration-200">
+                      <span className="text-lg">°</span>
+                      <span className="text-xs">Degree</span>
+                    </button>
+                  </div>
+                </div>
+
+                {/* Advanced Symbols */}
+                <div>
+                  <h3 className="text-sm font-semibold text-gray-900 mb-3">Advanced Symbols</h3>
+                  <div className="grid grid-cols-4 gap-2">
+                    <button onClick={() => addElement('text', 'heading', '√')} className="p-3 border border-gray-200 rounded-lg hover:border-purple-300 hover:bg-purple-50 flex flex-col items-center gap-1 hover:shadow-md transition-all duration-200">
+                      <span className="text-lg">√</span>
+                      <span className="text-xs">Square Root</span>
+                    </button>
+                    <button onClick={() => addElement('text', 'heading', '∛')} className="p-3 border border-gray-200 rounded-lg hover:border-purple-300 hover:bg-purple-50 flex flex-col items-center gap-1 hover:shadow-md transition-all duration-200">
+                      <span className="text-lg">∛</span>
+                      <span className="text-xs">Cube Root</span>
+                    </button>
+                    <button onClick={() => addElement('text', 'heading', 'π')} className="p-3 border border-gray-200 rounded-lg hover:border-purple-300 hover:bg-purple-50 flex flex-col items-center gap-1 hover:shadow-md transition-all duration-200">
+                      <span className="text-lg">π</span>
+                      <span className="text-xs">Pi</span>
+                    </button>
+                    <button onClick={() => addElement('text', 'heading', '∞')} className="p-3 border border-gray-200 rounded-lg hover:border-purple-300 hover:bg-purple-50 flex flex-col items-center gap-1 hover:shadow-md transition-all duration-200">
+                      <span className="text-lg">∞</span>
+                      <span className="text-xs">Infinity</span>
+                    </button>
+                    <button onClick={() => addElement('text', 'heading', '∑')} className="p-3 border border-gray-200 rounded-lg hover:border-purple-300 hover:bg-purple-50 flex flex-col items-center gap-1 hover:shadow-md transition-all duration-200">
+                      <span className="text-lg">∑</span>
+                      <span className="text-xs">Sum</span>
+                    </button>
+                    <button onClick={() => addElement('text', 'heading', '∫')} className="p-3 border border-gray-200 rounded-lg hover:border-purple-300 hover:bg-purple-50 flex flex-col items-center gap-1 hover:shadow-md transition-all duration-200">
+                      <span className="text-lg">∫</span>
+                      <span className="text-xs">Integral</span>
+                    </button>
+                    <button onClick={() => addElement('text', 'heading', '∆')} className="p-3 border border-gray-200 rounded-lg hover:border-purple-300 hover:bg-purple-50 flex flex-col items-center gap-1 hover:shadow-md transition-all duration-200">
+                      <span className="text-lg">∆</span>
+                      <span className="text-xs">Delta</span>
+                    </button>
+                    <button onClick={() => addElement('text', 'heading', 'α')} className="p-3 border border-gray-200 rounded-lg hover:border-purple-300 hover:bg-purple-50 flex flex-col items-center gap-1 hover:shadow-md transition-all duration-200">
+                      <span className="text-lg">α</span>
+                      <span className="text-xs">Alpha</span>
+                    </button>
+                  </div>
+                </div>
+
+                {/* Geometric Shapes */}
+                <div>
+                  <h3 className="text-sm font-semibold text-gray-900 mb-3">Geometric Shapes</h3>
+                  <div className="grid grid-cols-4 gap-2">
+                    <button onClick={() => addElement('shape')} className="p-3 border border-gray-200 rounded-lg hover:border-purple-300 hover:bg-purple-50 flex flex-col items-center gap-1 hover:shadow-md transition-all duration-200">
+                      <Square size={20} />
+                      <span className="text-xs">Square</span>
+                    </button>
+                    <button onClick={() => addElement('shape')} className="p-3 border border-gray-200 rounded-lg hover:border-purple-300 hover:bg-purple-50 flex flex-col items-center gap-1 hover:shadow-md transition-all duration-200">
+                      <span className="text-lg">○</span>
                       <span className="text-xs">Circle</span>
                     </button>
-                    <button
-                      onClick={() => addElement('shape')}
-                      className="p-3 border border-gray-200 rounded-lg hover:border-gray-300 flex flex-col items-center gap-1 hover:shadow-md transition-all duration-200"
-                    >
-                      <Triangle size={20} />
+                    <button onClick={() => addElement('shape')} className="p-3 border border-gray-200 rounded-lg hover:border-purple-300 hover:bg-purple-50 flex flex-col items-center gap-1 hover:shadow-md transition-all duration-200">
+                      <span className="text-lg">△</span>
                       <span className="text-xs">Triangle</span>
                     </button>
-                    <button
-                      onClick={() => addElement('graphic')}
-                      className="p-3 border border-gray-200 rounded-lg hover:border-gray-300 flex flex-col items-center gap-1 hover:shadow-md transition-all duration-200"
-                    >
-                      <Shapes size={20} />
-                      <span className="text-xs">Graphic</span>
+                    <button onClick={() => addElement('shape')} className="p-3 border border-gray-200 rounded-lg hover:border-purple-300 hover:bg-purple-50 flex flex-col items-center gap-1 hover:shadow-md transition-all duration-200">
+                      <span className="text-lg">◇</span>
+                      <span className="text-xs">Diamond</span>
                     </button>
-                  </div>
-                </div>
-
-                <div>
-                  <h3 className="text-sm font-semibold text-gray-900 mb-3">Graphics</h3>
-                  <div className="grid grid-cols-4 gap-2">
-                    <button className="p-3 border border-gray-200 rounded-lg hover:border-gray-300 flex flex-col items-center gap-1 hover:shadow-md transition-all duration-200">
-                      <Grid3X3 size={20} />
+                    <button onClick={() => addElement('table')} className="p-3 border border-gray-200 rounded-lg hover:border-purple-300 hover:bg-purple-50 flex flex-col items-center gap-1 hover:shadow-md transition-all duration-200">
+                      <Table size={20} />
                       <span className="text-xs">Grid</span>
                     </button>
-                    <button
-                      onClick={() => addElement('table')}
-                      className="p-3 border border-gray-200 rounded-lg hover:border-gray-300 flex flex-col items-center gap-1 hover:shadow-md transition-all duration-200"
-                    >
-                      <Table size={20} />
-                      <span className="text-xs">Table</span>
-                    </button>
-                  </div>
-                </div>
-
-                <div>
-                  <h3 className="text-sm font-semibold text-gray-900 mb-3">Photos</h3>
-                  <div className="grid grid-cols-4 gap-2">
-                    <button
-                      onClick={() => addElement('image')}
-                      className="p-3 border border-gray-200 rounded-lg hover:border-gray-300 flex flex-col items-center gap-1 hover:shadow-md transition-all duration-200"
-                    >
-                      <ImageIcon size={20} />
-                      <span className="text-xs">Photo</span>
+                    <button onClick={() => addElement('graphic')} className="p-3 border border-gray-200 rounded-lg hover:border-purple-300 hover:bg-purple-50 flex flex-col items-center gap-1 hover:shadow-md transition-all duration-200">
+                      <Shapes size={20} />
+                      <span className="text-xs">Graph</span>
                     </button>
                   </div>
                 </div>
@@ -1178,7 +1707,7 @@ export default function Create() {
 
           {/* Text Tab */}
           {((activeTab === 'text' && isSidebarExpanded) || hoveredTab === 'text') && (
-            <div className="w-80 bg-white border-r border-gray-200 shadow-lg transition-all duration-300 ease-in-out relative">
+            <div className="w-80 bg-white border-r border-gray-200 shadow-lg transition-all duration-300 ease-in-out relative h-full flex flex-col">
               {/* Collapse Button - Fixed position at right edge */}
               {isSidebarExpanded && activeTab === 'text' && (
                 <button
@@ -1188,7 +1717,7 @@ export default function Create() {
                   <ChevronRight size={14} className="text-gray-600" />
                 </button>
               )}
-              <div className="p-6">
+              <div className="p-6 flex-1 overflow-y-auto">
               <div className="space-y-4">
                 <div>
                   <button
@@ -1230,7 +1759,7 @@ export default function Create() {
 
           {/* Uploads Tab */}
           {((activeTab === 'uploads' && isSidebarExpanded) || hoveredTab === 'uploads') && (
-            <div className="w-80 bg-white border-r border-gray-200 shadow-lg transition-all duration-300 ease-in-out relative">
+            <div className="w-80 bg-white border-r border-gray-200 shadow-lg transition-all duration-300 ease-in-out relative h-full flex flex-col">
               {/* Collapse Button - Fixed position at right edge */}
               {isSidebarExpanded && activeTab === 'uploads' && (
                 <button
@@ -1240,7 +1769,7 @@ export default function Create() {
                   <ChevronRight size={14} className="text-gray-600" />
                 </button>
               )}
-              <div className="p-6">
+              <div className="p-6 flex-1 overflow-y-auto">
               <h3 className="text-sm font-semibold text-gray-900 mb-4">Uploads</h3>
               <div 
                 className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center hover:border-purple-400 hover:bg-purple-50 transition-all duration-200"
@@ -1447,15 +1976,18 @@ export default function Create() {
 
           <div className="flex items-center gap-2">
             <button 
-              onClick={() => setShowSaveDialog(true)}
+              onClick={exportToPowerPoint}
               className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
             >
-              <Save size={16} />
-              Save
+              <FileDown size={16} />
+              Export PPTX
             </button>
-            <button className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700">
-              <Download size={16} />
-              Export
+            <button 
+              onClick={() => setShowSaveDialog(true)}
+              className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
+            >
+              <Save size={16} />
+              Save to Cloud
             </button>
           </div>
         </div>
@@ -1521,6 +2053,14 @@ export default function Create() {
                                 handleTextEditEnd(element.id);
                               }
                             }}
+                            onSelect={(e) => {
+                              const textarea = e.target as HTMLTextAreaElement;
+                              setSavedSelection({
+                                start: textarea.selectionStart || 0,
+                                end: textarea.selectionEnd || 0
+                              });
+                            }}
+                            data-element-id={element.id}
                             className="w-full h-full resize-none border-none outline-none bg-transparent overflow-hidden"
                             style={{
                               fontSize: element.style?.fontSize,
@@ -1671,56 +2211,76 @@ export default function Create() {
           </div>
         </div>
 
-        {/* Bottom Slide Navigation - Canva Style with Thumbnails */}
-        <div className="bg-white border-t border-gray-200 px-6 py-4">
-          <div className="flex items-center gap-4">
-            {/* Slide thumbnails */}
-            <div className="flex items-center gap-2">
+        {/* Bottom Slide Navigation - Enhanced Canva Style */}
+        <div className="bg-white border-t border-gray-200 px-8 py-6">
+          <div className="flex items-center justify-between">
+            {/* Slide thumbnails - Larger and more spacious */}
+            <div className="flex items-center gap-3">
               {slides.map((slide, index) => (
                 <div
                   key={slide.id}
-                  onClick={() => setCurrentSlideIndex(index)}
+                  data-slide-index={index}
+                  onClick={() => handleSlideClick(index)}
+                  onContextMenu={(e) => handleSlideRightClick(e, index)}
+                  onMouseDown={(e) => handleSlideMouseDown(e, index)}
+                  onMouseUp={(e) => handleSlideMouseUp(e, index)}
+                  onMouseEnter={() => handleSlideMouseEnter(index)}
+                  onMouseLeave={() => handleSlideMouseLeave(index)}
                   className={cn(
-                    "w-20 h-14 bg-white border-2 rounded-lg shadow-sm cursor-pointer transition-all duration-200 hover:shadow-md relative overflow-hidden",
+                    "w-32 h-20 bg-white border-2 rounded-xl shadow-sm cursor-pointer transition-all duration-200 hover:shadow-lg relative overflow-hidden group select-none",
                     index === currentSlideIndex 
-                      ? "border-purple-500 shadow-lg" 
-                      : "border-gray-200 hover:border-gray-300"
+                      ? "border-purple-500 shadow-lg ring-2 ring-purple-100" 
+                      : "border-gray-200 hover:border-gray-300",
+                    isDraggingSlide && dragSlideIndex === index && "opacity-50 scale-95",
+                    isDraggingSlide && dragSlideIndex !== index && "cursor-grab"
                   )}
+                  style={{
+                    cursor: isDraggingSlide ? (dragSlideIndex === index ? 'grabbing' : 'grab') : 'pointer'
+                  }}
                 >
-                  {/* Slide thumbnail content */}
-                  <div className="w-full h-full bg-gray-50 flex flex-col items-center justify-center text-xs">
-                    <div className="w-4 h-4 bg-gray-400 rounded-full mb-1"></div>
-                    <span className="text-gray-600 font-medium">{index + 1}</span>
+                  {/* Slide thumbnail content - Better preview */}
+                  <div className="w-full h-full bg-gradient-to-br from-gray-50 to-gray-100 flex flex-col items-center justify-center text-sm relative">
+                    {/* Mini elements preview */}
+                    {slide.elements.length > 0 ? (
+                      <div className="w-full h-full p-2">
+                        {slide.elements.slice(0, 3).map((element, elIndex) => (
+                          <div
+                            key={elIndex}
+                            className="absolute"
+                            style={{
+                              left: `${(element.x / 800) * 100}%`,
+                              top: `${(element.y / 600) * 100}%`,
+                              width: `${Math.min((element.width / 800) * 100, 20)}%`,
+                              height: `${Math.min((element.height / 600) * 100, 15)}%`,
+                              backgroundColor: element.type === 'text' ? '#3b82f6' : element.type === 'image' ? '#10b981' : '#f59e0b',
+                              borderRadius: '2px'
+                            }}
+                          />
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="flex flex-col items-center justify-center text-gray-400">
+                        <Layers size={16} className="mb-1" />
+                        <span className="text-xs font-medium">Slide {index + 1}</span>
+                      </div>
+                    )}
+                    
+                    {/* Slide number badge */}
+                    <div className="absolute top-1 left-1 bg-black bg-opacity-70 text-white text-xs px-1.5 py-0.5 rounded">
+                      {index + 1}
+                    </div>
                   </div>
-                  
-                  {/* Delete button for slides other than first */}
-                  {index > 0 && (
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        const newSlides = slides.filter((_, i) => i !== index);
-                        setSlides(newSlides);
-                        if (currentSlideIndex >= newSlides.length) {
-                          setCurrentSlideIndex(newSlides.length - 1);
-                        }
-                        saveToHistory(newSlides);
-                      }}
-                      className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 text-white rounded-full flex items-center justify-center text-xs hover:bg-red-600 transition-colors duration-200"
-                    >
-                      ×
-                    </button>
-                  )}
                 </div>
               ))}
               
-              {/* Add slide button */}
+              {/* Add slide button - Enhanced */}
               <button
                 onClick={addSlide}
-                className="w-20 h-14 bg-gray-100 hover:bg-gray-200 border-2 border-dashed border-gray-300 rounded-lg flex items-center justify-center transition-all duration-200 hover:border-gray-400"
+                className="w-32 h-20 bg-gray-50 hover:bg-gray-100 border-2 border-dashed border-gray-300 rounded-xl flex items-center justify-center transition-all duration-200 hover:border-purple-400 hover:bg-purple-50 group"
               >
-                <div className="flex items-center gap-1">
-                  <Plus size={16} className="text-gray-500" />
-                  <ChevronLeft size={12} className="text-gray-500" />
+                <div className="flex flex-col items-center gap-1">
+                  <Plus size={20} className="text-gray-400 group-hover:text-purple-500" />
+                  <span className="text-xs text-gray-500 group-hover:text-purple-600 font-medium">Add page</span>
                 </div>
               </button>
             </div>
@@ -1755,36 +2315,130 @@ export default function Create() {
         </div>
       </div>
 
+      {/* Context Menu */}
+      {contextMenu && (
+        <div 
+          className="context-menu fixed z-50 bg-white rounded-lg shadow-lg border border-gray-200 py-2 min-w-48"
+          style={{
+            left: contextMenu.x,
+            top: contextMenu.y,
+            transform: contextMenu.y > window.innerHeight / 2 ? 'translateY(-100%)' : 'none'
+          }}
+        >
+          {/* Arrow pointer */}
+          <div 
+            className="absolute w-2 h-2 bg-white border-r border-b border-gray-200 transform rotate-45"
+            style={{
+              left: '20px',
+              bottom: contextMenu.y > window.innerHeight / 2 ? '-4px' : 'auto',
+              top: contextMenu.y > window.innerHeight / 2 ? 'auto' : '-4px'
+            }}
+          />
+          <div className="px-3 py-2 border-b border-gray-100">
+            <h3 className="text-sm font-semibold text-gray-900">Slide {contextMenu.slideIndex + 1}</h3>
+            <p className="text-xs text-gray-500">Presentation • 800 x 600 px</p>
+          </div>
+          
+          <div className="py-1">
+            <button
+              onClick={() => copySlide(contextMenu.slideIndex)}
+              className="w-full px-3 py-2 text-left text-sm text-gray-700 hover:bg-gray-100 flex items-center gap-3"
+            >
+              <Copy size={16} className="text-gray-500" />
+              Copy
+              <span className="ml-auto text-xs text-gray-400">Ctrl+C</span>
+            </button>
+            
+            <button
+              onClick={() => pasteSlide(contextMenu.slideIndex)}
+              disabled={!copiedSlide}
+              className={cn(
+                "w-full px-3 py-2 text-left text-sm flex items-center gap-3",
+                copiedSlide 
+                  ? "text-gray-700 hover:bg-gray-100" 
+                  : "text-gray-400 cursor-not-allowed"
+              )}
+            >
+              <Clipboard size={16} className="text-gray-500" />
+              Paste
+              <span className="ml-auto text-xs text-gray-400">Ctrl+V</span>
+            </button>
+            
+            <button
+              onClick={() => duplicateSlide(contextMenu.slideIndex)}
+              className="w-full px-3 py-2 text-left text-sm text-gray-700 hover:bg-gray-100 flex items-center gap-3"
+            >
+              <Copy size={16} className="text-gray-500" />
+              Duplicate page
+              <span className="ml-auto text-xs text-gray-400">Ctrl+D</span>
+            </button>
+            
+            <button
+              onClick={() => deleteSlide(contextMenu.slideIndex)}
+              className="w-full px-3 py-2 text-left text-sm text-gray-700 hover:bg-gray-100 flex items-center gap-3"
+            >
+              <Trash2 size={16} className="text-gray-500" />
+              Delete page
+              <span className="ml-auto text-xs text-gray-400">DELETE</span>
+            </button>
+          </div>
+          
+          <div className="border-t border-gray-100 py-1">
+            <button
+              onClick={() => {
+                setCurrentSlideIndex(contextMenu.slideIndex);
+                addSlide();
+                setContextMenu(null);
+              }}
+              className="w-full px-3 py-2 text-left text-sm text-gray-700 hover:bg-gray-100 flex items-center gap-3"
+            >
+              <Plus size={16} className="text-gray-500" />
+              Add page
+              <span className="ml-auto text-xs text-gray-400">Ctrl+Enter</span>
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Save Dialog */}
       {showSaveDialog && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-30 backdrop-blur-sm">
           <div className="bg-white rounded-lg p-6 w-full max-w-md">
-            <h2 className="text-xl font-bold mb-4">Save Slide</h2>
+            <h2 className="text-xl font-bold mb-4">Save to Cloud</h2>
+            <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+              <p className="text-sm text-blue-800">
+                <strong>Total Slides:</strong> {slides.length} | 
+                <strong> Total Elements:</strong> {slides.reduce((sum, slide) => sum + slide.elements.length, 0)}
+              </p>
+              <p className="text-xs text-blue-600 mt-1">
+                💡 This will save your presentation to the cloud database. Use "Export PPTX" to download a PowerPoint file.
+              </p>
+            </div>
             
             <div className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Title *
+                  Presentation Title *
                 </label>
                 <input
                   type="text"
                   value={slideTitle}
                   onChange={(e) => setSlideTitle(e.target.value)}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  placeholder="Enter slide title"
+                  placeholder="Enter presentation title"
                 />
               </div>
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Topic
+                  Subject/Topic *
                 </label>
                 <input
                   type="text"
                   value={slideTopic}
                   onChange={(e) => setSlideTopic(e.target.value)}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  placeholder="Enter topic (optional)"
+                  placeholder="e.g., Algebra, Geometry, Calculus"
                 />
               </div>
 
@@ -1832,11 +2486,11 @@ export default function Create() {
                 Cancel
               </button>
               <button
-                onClick={handleSaveSlide}
+                onClick={handleSavePresentation}
                 disabled={createSlideMutation.isPending}
                 className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:bg-blue-400"
               >
-                {createSlideMutation.isPending ? 'Saving...' : 'Save Slide'}
+                {createSlideMutation.isPending ? 'Saving...' : 'Save Presentation'}
               </button>
             </div>
           </div>
