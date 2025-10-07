@@ -1103,14 +1103,96 @@ export default function Create() {
         totalElements: slides.reduce((sum, slide) => sum + slide.elements.length, 0)
       });
 
-      // Create a dummy file for now (in real implementation, you'd generate a file from slides)
-      const dummyFile = new File(['dummy content'], `${slideTitle.replace(/[^a-zA-Z0-9]/g, '_')}.pptx`, { 
-        type: 'application/vnd.openxmlformats-officedocument.presentationml.presentation' 
+      // Generate a REAL PPTX from current slides using pptxgenjs (frontend)
+      const pptx = new PptxGenJS();
+      pptx.layout = 'LAYOUT_16x9';
+      pptx.author = 'MathSlide Creator';
+      pptx.company = 'MathSlide Learning';
+      pptx.subject = slideTopic || 'Mathematics Presentation';
+      pptx.title = slideTitle || 'Untitled Presentation';
+
+      slides.forEach((slide) => {
+        const pptxSlide = pptx.addSlide();
+        pptxSlide.background = { color: slide.backgroundColor || '#ffffff' };
+
+        slide.elements.forEach((element) => {
+          const elementProps: any = {
+            x: (element.x / 800) * 10,
+            y: (element.y / 600) * 5.625,
+            w: (element.width / 800) * 10,
+            h: (element.height / 600) * 5.625,
+          };
+
+          switch (element.type) {
+            case 'text':
+              pptxSlide.addText(element.content || 'Text', {
+                ...elementProps,
+                fontSize: parseInt(String(element.style?.fontSize)) || 16,
+                color: element.style?.color || '#000000',
+                bold: element.style?.fontWeight === 'bold',
+                italic: element.style?.fontStyle === 'italic',
+                underline: element.style?.textDecoration === 'underline',
+                align:
+                  element.style?.textAlign === 'center'
+                    ? 'center'
+                    : element.style?.textAlign === 'right'
+                      ? 'right'
+                      : 'left',
+                fontFace: element.style?.fontFamily || 'Arial',
+              });
+              break;
+            case 'image':
+              if (element.content) {
+                pptxSlide.addImage({
+                  ...elementProps,
+                  data: element.content,
+                });
+              }
+              break;
+            case 'shape':
+              pptxSlide.addShape('rect', {
+                ...elementProps,
+                fill: { color: element.style?.backgroundColor || '#f3f4f6' },
+                line: { color: '#d1d5db', width: 1 },
+              });
+              break;
+            case 'table':
+              pptxSlide.addTable(
+                [
+                  [{ text: 'Cell 1', options: { fontSize: 12 } }],
+                  [{ text: 'Cell 2', options: { fontSize: 12 } }],
+                ],
+                {
+                  ...elementProps,
+                  border: { type: 'solid', color: '#d1d5db', pt: 1 },
+                  fill: { color: '#ffffff' },
+                },
+              );
+              break;
+            case 'graphic':
+              pptxSlide.addShape('rect', {
+                ...elementProps,
+                fill: {
+                  type: 'gradient',
+                  gradientStops: [
+                    { position: 0, color: '#3b82f6' },
+                    { position: 100, color: '#8b5cf6' },
+                  ],
+                },
+              });
+              break;
+          }
+        });
+      });
+
+      const blob = (await (pptx as any).write({ outputType: 'blob' })) as Blob;
+      const realFile = new File([blob as BlobPart], `${slideTitle.replace(/[^a-zA-Z0-9]/g, '_')}.pptx`, {
+        type: 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
       });
 
       await createSlideMutation.mutateAsync({
         slideDto: presentationData,
-        file: dummyFile
+        file: realFile,
       });
 
       alert(`Presentation "${slideTitle}" saved successfully with ${slides.length} slides!`);
