@@ -19,7 +19,7 @@ import MyLibrary from "src/pages/MyLibrary";
 import PaymentMethodsAdmin from "./pages/PaymentMethodsAdmin";
 import TagManagement from "src/pages/TagManagement";
 import Create from "src/pages/Create";
-
+import PurchaseHistory from "src/pages/PurchaseHistory";
 
 function App() {
   const user = useUser((s) => s.user);
@@ -60,6 +60,7 @@ function App() {
         <Route path="upload" element={<Upload />} />
         <Route path="payment" element={<Payment />} />
         <Route path="my-library" element={<MyLibrary />} />
+        <Route path="purchase-history" element={<PurchaseHistory />}></Route>
 
         <Route path="test" element={<Test />} />
       </Route>
