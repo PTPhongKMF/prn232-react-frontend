@@ -1,6 +1,13 @@
 import { Loader2, Plus, Save, Trash2 } from "lucide-react";
 import { type UpdateQuestion } from "src/types/question/question";
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTrigger } from "src/components/libs/shadcn/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "src/components/libs/shadcn/dialog";
 import { Input } from "src/components/libs/shadcn/input";
 import { useState } from "react";
 import { type Tag } from "src/types/tag/tag";
@@ -83,14 +90,16 @@ export default function CreateQuestionDialog({ tagList, isLoading, onSubmit, tri
       </DialogTrigger>
       <DialogContent className="bg-slate-100 min-w-[50vw] pt-10 max-h-[85vh] flex flex-col">
         <div className="flex-1 overflow-y-auto pr-2">
-          <DialogHeader className="min-h-fit max-h-[3rem] overflow-y-auto mb-2">
-            <Input
+          <DialogTitle className="mb-8">
+            <textarea
               value={formData.content}
               onChange={(e) => setFormData((prev) => ({ ...prev, content: e.target.value }))}
-              className="w-full focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:outline-none"
+              className="w-full rounded-md px-4 py-3 min-h-[120px] text-lg bg-white/80 border border-gray-200
+                focus:outline-none focus:ring-2 focus:ring-amber-500/50 focus:border-amber-500
+                placeholder:text-gray-400 resize-y transition-all duration-200"
               placeholder="Enter your question..."
             />
-          </DialogHeader>
+          </DialogTitle>
 
           <div className="flex justify-between items-center mb-2">
             <div className="flex items-center gap-2">
@@ -165,7 +174,7 @@ export default function CreateQuestionDialog({ tagList, isLoading, onSubmit, tri
                   )}
                 >
                   <div className="flex items-center gap-2">
-                    <Input
+                    <input
                       value={answer.content}
                       onChange={(e) =>
                         setFormData((prev) => ({
@@ -173,7 +182,7 @@ export default function CreateQuestionDialog({ tagList, isLoading, onSubmit, tri
                           answers: prev.answers.map((a, i) => (i === index ? { ...a, content: e.target.value } : a)),
                         }))
                       }
-                      className="flex-1 focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:outline-none"
+                      className="flex-1 bg-transparent text-base px-2 py-1 focus:outline-none placeholder:text-gray-400 transition-colors"
                       placeholder={`Answer ${index + 1}`}
                     />
                     <label className="flex items-center gap-1 cursor-pointer">
@@ -205,7 +214,7 @@ export default function CreateQuestionDialog({ tagList, isLoading, onSubmit, tri
               ))}
               <button
                 onClick={addAnswer}
-                className="w-full py-2 border-2 border-dashed border-gray-300 rounded-lg text-gray-500 hover:text-gray-700 hover:border-gray-400 transition-colors"
+                className="w-full cursor-pointer py-2 border-2 border-dashed border-gray-300 rounded-lg text-gray-500 hover:text-gray-700 hover:border-gray-400 transition-colors"
               >
                 <Plus className="size-5 mx-auto" />
               </button>
