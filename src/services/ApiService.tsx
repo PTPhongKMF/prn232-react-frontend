@@ -7,6 +7,7 @@ export const backendUrl = KyAspDotnet_LOCAL;
 
 export const kyAspDotnet = ky.extend({
   prefixUrl: backendUrl,
+  timeout: 60000,
   hooks: {
     beforeRequest: [
       (request) => {
