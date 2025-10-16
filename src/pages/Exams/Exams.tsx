@@ -1,3 +1,5 @@
-export default function Exams() {
-  return <div>Exams</div>;
-}
+
+const Exams = () => null;
+
+export default Exams;
+
