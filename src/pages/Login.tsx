@@ -4,15 +4,11 @@ import { Link, Navigate, useNavigate } from "react-router";
 import { Input } from "src/components/libs/shadcn/input";
 import { useLoginMutation } from "src/hooks/useAuth";
 import { useUser } from "src/stores/userStore";
-import { Cookies } from "typescript-cookie";
-
-
 
 export default function Login() {
   const user = useUser((state) => state.user);
   const [loginData, setLoginData] = useState({ email: "", password: "" });
   const navigate = useNavigate();
-  const setUser = useUser((state) => state.setUser);
 
   const handleLogin = useLoginMutation();
 
@@ -30,32 +26,13 @@ export default function Login() {
         border-yellow-400 shadow-[8px_8px_0px_0px_rgba(0,0,0,0.25)]"
         onSubmit={(e) => {
           e.preventDefault();
-           handleLogin.mutate(loginData, {
-           onSuccess: (response) => {
-  console.log("Response from server:", response);
-  const token = response?.data?.token;
-  const user = response?.data?.user;
-
-  if (!token || !user) {
-    alert("Login failed: Missing token or user info");
-    return;
-  }
-
-  // ✅ Lưu token
-  localStorage.setItem("token", token);
-  localStorage.setItem("user", JSON.stringify(user));
-  Cookies.set("token", token, { expires: 1 });
-
-  // ✅ Cập nhật store để NavBar biết user đã đăng nhập
-  setUser(user);
-
-  // ✅ Điều hướng theo role
-  if (user.role === "Teacher") navigate("/my-exams");
-  else if (user.role === "Admin") navigate("/admin");
-  else navigate("/");
-}, 
-            onError: (error) => {
-              console.error("❌ Login failed:", error);
+          handleLogin.mutate(loginData, {
+            onSuccess: (data) => {
+              if (data.data.user.role === "Admin") {
+                navigate("/admin");
+              } else {
+                navigate("/");
+              }
             },
           });
         }}

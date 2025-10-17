@@ -13,7 +13,6 @@ import {
   CreditCard,
   BookText,
   Tag,
-  FilePlus2,
 } from "lucide-react";
 import { useProfile } from "src/hooks/useAuth";
 import { Cookies } from "typescript-cookie";
@@ -23,47 +22,17 @@ import { useCart } from "src/stores/cartStore";
 import { HoverCard, HoverCardContent, HoverCardTrigger } from "src/components/libs/shadcn/hover-card";
 
 export default function NavBar() {
-  const { data: userFromApi, isSuccess } = useProfile();
+  const { data: user, isSuccess } = useProfile();
   const setUser = useUser((state) => state.setUser);
-  const zustandUser = useUser((state) => state.user);
   const { items } = useCart();
   const queryClient = useQueryClient();
   const navigate = useNavigate();
 
-  // 🧩 Đọc user từ localStorage an toàn
-  const getStoredUser = () => {
-    try {
-      const raw = localStorage.getItem("user");
-      if (!raw || raw === "undefined" || raw === "null") return null;
-      return JSON.parse(raw);
-    } catch {
-      return null;
-    }
-  };
-
-  const storedUser = getStoredUser();
-
-  // 🧠 Ưu tiên dữ liệu theo thứ tự: Zustand → API → localStorage
-  const user = zustandUser || userFromApi || storedUser;
-
-  // 🚪 Xử lý logout
-  const handleLogout = async () => {
-    try {
-      Cookies.remove("token");
-      localStorage.removeItem("token");
-      localStorage.removeItem("user");
-
-      // Reset Zustand store
-      setUser(null);
-
-      // Clear React Query cache
-      await queryClient.clear();
-
-      // Điều hướng & reload UI
-      navigate("/login", { replace: true });
-    } catch (error) {
-      console.error("Logout failed:", error);
-    }
+  const handleLogout = () => {
+    Cookies.remove("token");
+    setUser(null);
+    queryClient.clear();
+    navigate("/login");
   };
 
   return (
@@ -75,6 +44,14 @@ export default function NavBar() {
         </Link>
 
         <div className="flex items-center gap-12">
+          {/* <Link
+            to="/slides"
+            className="flex justify-center items-center gap-1 font-medium text-gray-600 transition-colors hover:text-blue-600"
+          >
+            <BookMarked />
+            Slides
+          </Link> */}
+
           <Link
             to="/explore"
             className="flex items-center gap-2 font-medium text-gray-600 transition-colors hover:text-blue-600"
@@ -85,44 +62,24 @@ export default function NavBar() {
 
           <Link
             to="/exams"
-            className="flex items-center gap-2 font-medium text-gray-600 transition-colors hover:text-blue-600"
+            className="flex justify-center items-center gap-2 font-medium text-gray-600 transition-colors hover:text-blue-600"
           >
             <BookOpenText />
             Exams
           </Link>
 
-          {/* 🧑‍🏫 Teacher-only features */}
           {user?.role === "Teacher" && (
-            <>
-              <Link
-                to="/questionbank"
-                className="flex items-center gap-2 font-medium text-gray-600 hover:text-blue-600"
-              >
-                <BadgeQuestionMark />
-                Question Bank
-              </Link>
-
-              <Link
-                to="/exams/create"
-                className="flex items-center gap-2 font-semibold text-blue-600 hover:text-indigo-700"
-              >
-                <FilePlus2 size={18} />
-                Create Exam
-              </Link>
-
-              <Link
-                to="/my-exams"
-                className="flex items-center gap-2 font-semibold text-green-600 hover:text-emerald-700"
-              >
-                <BookOpenText size={18} />
-                My Exams
-              </Link>
-            </>
+            <Link
+              to="/questionbank"
+              className="flex justify-center items-center gap-2 font-medium text-gray-600 transition-colors hover:text-blue-600"
+            >
+              <BadgeQuestionMark />
+              Question Bank
+            </Link>
           )}
 
           <div className="h-5 w-0.5 bg-black" />
 
-          {/* 🛒 Cart */}
           {user && (
             <Link
               to="/payment"
@@ -138,7 +95,6 @@ export default function NavBar() {
             </Link>
           )}
 
-          {/* 🎓 Student-only */}
           {isSuccess && user?.role === "Student" && (
             <Link
               to="/my-library"
@@ -149,8 +105,7 @@ export default function NavBar() {
             </Link>
           )}
 
-          {/* 👤 User menu */}
-          {user ? (
+          {isSuccess && user ? (
             <HoverCard>
               <HoverCardTrigger asChild>
                 <button className="flex items-center gap-2 font-semibold text-gray-700 cursor-pointer">
@@ -161,57 +116,53 @@ export default function NavBar() {
               <HoverCardContent className="w-56 p-0 bg-white border-0" align="end">
                 <Link
                   to="/profile"
-                  className="flex w-full items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                  className="flex w-full items-center px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-100"
                 >
                   <LayoutDashboard className="mr-2 h-4 w-4" />
                   Profile
                 </Link>
-
                 {user.role === "Admin" && (
                   <>
                     <Link
                       to="/admin"
-                      className="flex w-full items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                      className="flex w-full items-center px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-100"
                     >
                       <Shield className="mr-2 h-4 w-4" />
                       User Management
                     </Link>
                     <Link
-                      to="/admin/tag-management"
-                      className="flex w-full items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                      to="admin/tag-management"
+                      className="flex w-full items-center px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-100"
                     >
                       <Tag className="mr-2 h-4 w-4" />
                       Tag Management
                     </Link>
                     <Link
                       to="/admin/payment-methods"
-                      className="flex w-full items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                      className="flex w-full items-center px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-100"
                     >
                       <CreditCard className="mr-2 h-4 w-4" />
                       Payment Methods
                     </Link>
                   </>
                 )}
-
                 <Link
                   to="/upload"
-                  className="flex w-full items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                  className="flex w-full items-center px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-100"
                 >
                   <Upload className="mr-2 h-4 w-4" />
                   Upload
                 </Link>
-
                 <Link
                   to={`/slides/user/${user.id}`}
-                  className="flex w-full items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                  className="flex w-full items-center px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-100"
                 >
                   <BookOpen className="mr-2 h-4 w-4" />
                   My Slides
                 </Link>
-
                 <button
                   onClick={handleLogout}
-                  className="flex w-full items-center px-4 py-2 text-sm text-red-600 hover:bg-gray-100"
+                  className="flex w-full items-center px-4 py-2 text-left text-sm text-red-600 hover:bg-gray-100 cursor-pointer"
                 >
                   <LogOut className="mr-2 h-4 w-4" />
                   Logout
@@ -220,7 +171,7 @@ export default function NavBar() {
             </HoverCard>
           ) : (
             <>
-              <Link to="/login" className="font-semibold text-gray-600 hover:text-blue-600">
+              <Link to="/login" className="font-semibold text-gray-600 transition-colors hover:text-blue-600">
                 Login
               </Link>
               <Link

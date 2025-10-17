@@ -1,5 +1,3 @@
-
-const Exams = () => null;
-
-export default Exams;
-
+export default function Exams() {
+  return <div>Exams</div>;
+}

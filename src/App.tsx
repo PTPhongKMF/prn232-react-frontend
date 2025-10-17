@@ -13,14 +13,11 @@ import ProtectedRoute from "src/components/ProtectedRoute";
 import QuestionBank from "src/pages/QuestionBank";
 import Upload from "src/pages/Upload";
 import Explore from "src/pages/Explore";
-
 import Payment from "src/pages/Payment";
 import MyLibrary from "src/pages/MyLibrary";
 import PaymentMethodsAdmin from "./pages/PaymentMethodsAdmin";
 import TagManagement from "src/pages/TagManagement";
 import Slides from "src/pages/Slides";
-import CreateExam from "src/pages/Exams/CreateExam";
-import MyExams from "src/pages/Exams/MyExams";
 
 function App() {
   const user = useUser((s) => s.user);
@@ -43,12 +40,9 @@ function App() {
         <Route path="profile" element={<Profile />} />
 
         <Route element={<ProtectedRoute allowedRoles={["Teacher", "Admin"]} />}>
-          <Route path="questionbank" element={<QuestionBank />} />       
+          <Route path="questionbank" element={<QuestionBank />} />
         </Route>
-        <Route element={<ProtectedRoute allowedRoles={["Teacher"]} />}>
-          <Route path="/exams/create" element={<CreateExam />} />
-          <Route path="/my-exams" element={<MyExams />} />
-        </Route>
+
         <Route element={<ProtectedRoute allowedRoles={["Admin"]} />}>
           <Route path="admin/tag-management" element={<TagManagement />} />
         </Route>
