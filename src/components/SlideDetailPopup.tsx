@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { X, Download, ChevronLeft, ChevronRight, FileImage } from "lucide-react";
+import { X, ChevronLeft, ChevronRight, FileImage } from "lucide-react";
 import { cn } from "src/utils/cn";
 import type { SlideWithTeacher } from "src/types/slide/slide";
 

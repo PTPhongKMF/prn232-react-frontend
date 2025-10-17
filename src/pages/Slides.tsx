@@ -2,7 +2,6 @@ import { useState } from "react";
 import { useParams } from "react-router";
 import { useSlidesByTeacherId, useUpdateSlideStatusMutation, useUpdateSlideMutation, usePublicSlides } from "src/hooks/useSlides";
 import { Loader2, DollarSign, GraduationCap, Calendar, FileWarning, FileType, Edit, X, Save, FileText, Tag, UploadCloud, Eye } from "lucide-react";
-import { backendUrl } from "src/services/ApiService";
 import { cn } from "src/utils/cn";
 import { useProfile } from "src/hooks/useAuth";
 import type { Slide, SlideUpdateData, SlideWithTeacher } from "src/types/slide/slide";
