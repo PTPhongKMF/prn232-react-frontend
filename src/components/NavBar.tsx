@@ -13,7 +13,10 @@ import {
   CreditCard,
   BookText,
   Tag,
+<<<<<<< HEAD
   FilePlus2,
+=======
+>>>>>>> parent of fa6a721 (Merge pull request #6 from PTPhongKMF/main)
 } from "lucide-react";
 import { useProfile } from "src/hooks/useAuth";
 import { Cookies } from "typescript-cookie";
@@ -93,6 +96,7 @@ export default function NavBar() {
 
           {/* 🧑‍🏫 Teacher-only features */}
           {user?.role === "Teacher" && (
+<<<<<<< HEAD
             <>
               <Link
                 to="/questionbank"
@@ -118,6 +122,15 @@ export default function NavBar() {
                 My Exams
               </Link>
             </>
+=======
+            <Link
+              to="/questionbank"
+              className="flex justify-center items-center gap-2 font-medium text-gray-600 transition-colors hover:text-blue-600"
+            >
+              <BadgeQuestionMark />
+              Question Bank
+            </Link>
+>>>>>>> parent of fa6a721 (Merge pull request #6 from PTPhongKMF/main)
           )}
 
           <div className="h-5 w-0.5 bg-black" />
@@ -149,8 +162,12 @@ export default function NavBar() {
             </Link>
           )}
 
+<<<<<<< HEAD
           {/* 👤 User menu */}
           {user ? (
+=======
+          {isSuccess && user ? (
+>>>>>>> parent of fa6a721 (Merge pull request #6 from PTPhongKMF/main)
             <HoverCard>
               <HoverCardTrigger asChild>
                 <button className="flex items-center gap-2 font-semibold text-gray-700 cursor-pointer">

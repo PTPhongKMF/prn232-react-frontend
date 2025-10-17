@@ -19,8 +19,11 @@ import MyLibrary from "src/pages/MyLibrary";
 import PaymentMethodsAdmin from "./pages/PaymentMethodsAdmin";
 import TagManagement from "src/pages/TagManagement";
 import Slides from "src/pages/Slides";
+<<<<<<< HEAD
 import CreateExam from "src/pages/Exams/CreateExam";
 import MyExams from "src/pages/Exams/MyExams";
+=======
+>>>>>>> parent of fa6a721 (Merge pull request #6 from PTPhongKMF/main)
 
 function App() {
   const user = useUser((s) => s.user);
@@ -43,11 +46,15 @@ function App() {
         <Route path="profile" element={<Profile />} />
 
         <Route element={<ProtectedRoute allowedRoles={["Teacher", "Admin"]} />}>
+<<<<<<< HEAD
           <Route path="questionbank" element={<QuestionBank />} />       
         </Route>
         <Route element={<ProtectedRoute allowedRoles={["Teacher"]} />}>
           <Route path="/exams/create" element={<CreateExam />} />
           <Route path="/my-exams" element={<MyExams />} />
+=======
+          <Route path="questionbank" element={<QuestionBank />} />
+>>>>>>> parent of fa6a721 (Merge pull request #6 from PTPhongKMF/main)
         </Route>
         <Route element={<ProtectedRoute allowedRoles={["Admin"]} />}>
           <Route path="admin/tag-management" element={<TagManagement />} />

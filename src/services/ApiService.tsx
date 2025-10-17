@@ -17,6 +17,7 @@ export const kyAspDotnet = ky.create({
       },
     ],
   },
+<<<<<<< HEAD
 });
 
 const ApiService = {
@@ -27,3 +28,6 @@ const ApiService = {
 };
 export default ApiService;
 
+=======
+});
+>>>>>>> parent of fa6a721 (Merge pull request #6 from PTPhongKMF/main)
