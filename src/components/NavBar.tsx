@@ -14,6 +14,8 @@ import {
   BookText,
   Tag,
   FilePlus2,
+  Plus,
+  History,
 } from "lucide-react";
 import { useProfile } from "src/hooks/useAuth";
 import { Cookies } from "typescript-cookie";
@@ -95,8 +97,19 @@ export default function NavBar() {
           {user?.role === "Teacher" && (
             <>
               <Link
+
                 to="/questionbank"
                 className="flex items-center gap-2 font-medium text-gray-600 hover:text-blue-600"
+
+                to="/create"
+                className="flex justify-center items-center gap-2 font-medium text-gray-600 transition-colors hover:text-blue-600"
+              >
+                <Plus />
+                Create
+              </Link>
+              <Link
+                to="/questionbank"
+                className="flex justify-center items-center gap-2 font-medium text-gray-600 transition-colors hover:text-blue-600"
               >
                 <BadgeQuestionMark />
                 Question Bank
@@ -117,6 +130,7 @@ export default function NavBar() {
                 <BookOpenText size={18} />
                 My Exams
               </Link>
+
             </>
           )}
 
@@ -149,8 +163,44 @@ export default function NavBar() {
             </Link>
           )}
 
-          {/* 👤 User menu */}
-          {user ? (
+
+         
+          {user && (
+            <Link
+              to="/payment"
+              className="relative flex items-center gap-2 font-medium text-gray-600 transition-colors hover:text-blue-600"
+            >
+              <ShoppingCart size={18} />
+              {items.length > 0 && (
+                <span className="absolute -top-2 -right-2 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-xs text-white">
+                  {items.length}
+                </span>
+              )}
+              Cart
+            </Link>
+          )}
+
+          {isSuccess && user?.role === "Student" && (
+            <Link
+              to="/my-library"
+              className="flex items-center gap-2 font-medium text-gray-600 transition-colors hover:text-blue-600"
+            >
+              <BookText size={18} />
+              My Library
+            </Link>
+          )}
+
+          {isSuccess && user?.role === "Student" && (
+            <Link
+              to="/purchase-history"
+              className="flex items-center gap-2 font-medium text-gray-600 transition-colors hover:text-blue-600"
+            >
+              <History size={18} />
+              Purchase History
+            </Link>
+          )}
+
+          {isSuccess && user ? (
             <HoverCard>
               <HoverCardTrigger asChild>
                 <button className="flex items-center gap-2 font-semibold text-gray-700 cursor-pointer">
@@ -161,57 +211,53 @@ export default function NavBar() {
               <HoverCardContent className="w-56 p-0 bg-white border-0" align="end">
                 <Link
                   to="/profile"
-                  className="flex w-full items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                  className="flex w-full items-center px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-100"
                 >
                   <LayoutDashboard className="mr-2 h-4 w-4" />
                   Profile
                 </Link>
-
                 {user.role === "Admin" && (
                   <>
                     <Link
                       to="/admin"
-                      className="flex w-full items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                      className="flex w-full items-center px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-100"
                     >
                       <Shield className="mr-2 h-4 w-4" />
                       User Management
                     </Link>
                     <Link
-                      to="/admin/tag-management"
-                      className="flex w-full items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                      to="admin/tag-management"
+                      className="flex w-full items-center px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-100"
                     >
                       <Tag className="mr-2 h-4 w-4" />
                       Tag Management
                     </Link>
                     <Link
                       to="/admin/payment-methods"
-                      className="flex w-full items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                      className="flex w-full items-center px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-100"
                     >
                       <CreditCard className="mr-2 h-4 w-4" />
                       Payment Methods
                     </Link>
                   </>
                 )}
-
                 <Link
                   to="/upload"
-                  className="flex w-full items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                  className="flex w-full items-center px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-100"
                 >
                   <Upload className="mr-2 h-4 w-4" />
                   Upload
                 </Link>
-
                 <Link
                   to={`/slides/user/${user.id}`}
-                  className="flex w-full items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                  className="flex w-full items-center px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-100"
                 >
                   <BookOpen className="mr-2 h-4 w-4" />
                   My Slides
                 </Link>
-
                 <button
                   onClick={handleLogout}
-                  className="flex w-full items-center px-4 py-2 text-sm text-red-600 hover:bg-gray-100"
+                  className="flex w-full items-center px-4 py-2 text-left text-sm text-red-600 hover:bg-gray-100 cursor-pointer"
                 >
                   <LogOut className="mr-2 h-4 w-4" />
                   Logout
@@ -220,7 +266,7 @@ export default function NavBar() {
             </HoverCard>
           ) : (
             <>
-              <Link to="/login" className="font-semibold text-gray-600 hover:text-blue-600">
+              <Link to="/login" className="font-semibold text-gray-600 transition-colors hover:text-blue-600">
                 Login
               </Link>
               <Link
@@ -235,4 +281,4 @@ export default function NavBar() {
       </nav>
     </header>
   );
-}
+} 

@@ -6,6 +6,7 @@ export const backendUrl = "https://localhost:7035";
 
 export const kyAspDotnet = ky.create({
   prefixUrl: backendUrl,
+  timeout: 60000,
   hooks: {
     beforeRequest: [
       (request) => {
@@ -18,12 +19,4 @@ export const kyAspDotnet = ky.create({
     ],
   },
 });
-
-const ApiService = {
-  get: (url: string, opts?: any) => kyAspDotnet.get(url, opts),
-  post: (url: string, opts?: any) => kyAspDotnet.post(url, opts),
-  put: (url: string, opts?: any) => kyAspDotnet.put(url, opts),
-  delete: (url: string, opts?: any) => kyAspDotnet.delete(url, opts),
-};
-export default ApiService;
 

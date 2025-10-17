@@ -42,6 +42,10 @@ export function useCreateQuestionMutation() {
         json: v.parse(UpdateQuestionSchema, data),
       });
     },
+    onError: async (error) => {
+      console.log(error);
+      console.log(await error.response.json());
+    },
   });
 }
 
