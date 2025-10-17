@@ -13,6 +13,8 @@ import {
   CreditCard,
   BookText,
   Tag,
+  Plus,
+  History,
 } from "lucide-react";
 import { useProfile } from "src/hooks/useAuth";
 import { Cookies } from "typescript-cookie";
@@ -69,13 +71,22 @@ export default function NavBar() {
           </Link>
 
           {user?.role === "Teacher" && (
-            <Link
-              to="/questionbank"
-              className="flex justify-center items-center gap-2 font-medium text-gray-600 transition-colors hover:text-blue-600"
-            >
-              <BadgeQuestionMark />
-              Question Bank
-            </Link>
+            <>
+              <Link
+                to="/create"
+                className="flex justify-center items-center gap-2 font-medium text-gray-600 transition-colors hover:text-blue-600"
+              >
+                <Plus />
+                Create
+              </Link>
+              <Link
+                to="/questionbank"
+                className="flex justify-center items-center gap-2 font-medium text-gray-600 transition-colors hover:text-blue-600"
+              >
+                <BadgeQuestionMark />
+                Question Bank
+              </Link>
+            </>
           )}
 
           <div className="h-5 w-0.5 bg-black" />
@@ -102,6 +113,16 @@ export default function NavBar() {
             >
               <BookText size={18} />
               My Library
+            </Link>
+          )}
+
+          {isSuccess && user?.role === "Student" && (
+            <Link
+              to="/purchase-history"
+              className="flex items-center gap-2 font-medium text-gray-600 transition-colors hover:text-blue-600"
+            >
+              <History size={18} />
+              Purchase History
             </Link>
           )}
 

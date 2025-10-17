@@ -22,6 +22,7 @@ export type User = {
   email: string;
   role: string;
   grade?: number;
+  isDeleted: boolean;
 };
 
 // Function to decode JWT payload

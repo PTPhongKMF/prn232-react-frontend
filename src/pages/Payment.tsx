@@ -8,11 +8,22 @@ import {
   FileWarning,
   CircleCheck,
   CircleAlert,
+  Check,
+  Square,
 } from "lucide-react";
 import { useNavigate } from "react-router";
 
 export default function Payment() {
-  const { items, removeFromCart, clearCart } = useCart();
+  const { 
+    items, 
+    removeFromCart, 
+    clearCart, 
+    toggleItemSelection, 
+    selectAllItems, 
+    deselectAllItems,
+    getSelectedItems,
+    getTotalPrice
+  } = useCart();
   const { data: paymentMethods, isLoading: isLoadingMethods } = usePaymentMethods();
   const purchaseMutation = usePurchaseMutation();
   const updateStatusMutation = useUpdateReceiptStatusMutation();
@@ -22,14 +33,21 @@ export default function Payment() {
   const [isProcessing, setIsProcessing] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
 
-  const totalPrice = items.reduce((total, item) => total + item.price, 0);
+  const totalPrice = getTotalPrice();
+  const selectedItems = getSelectedItems();
+  const selectedCount = items.filter(item => item.selected).length;
+  const allSelected = selectedCount === items.length && items.length > 0;
 
   const handlePurchase = async () => {
     if (!selectedMethodId) {
       alert("Please select a payment method.");
       return;
     }
-    const slideIds = items.map((item) => item.id);
+    if (selectedItems.length === 0) {
+      alert("Please select at least one item to purchase.");
+      return;
+    }
+    const slideIds = selectedItems.map((item) => item.id);
 
     try {
       // 1. Create a pending receipt
@@ -86,18 +104,46 @@ export default function Payment() {
           {items.length > 0 ? (
             <div className="space-y-6">
               <div className="rounded-lg bg-white p-6 shadow-sm">
-                <h2 className="text-xl font-semibold">Order Summary</h2>
+                <div className="flex items-center justify-between mb-4">
+                  <h2 className="text-xl font-semibold">Order Summary</h2>
+                  <button
+                    onClick={allSelected ? deselectAllItems : selectAllItems}
+                    className="flex items-center gap-2 text-sm text-blue-600 hover:text-blue-700"
+                  >
+                    {allSelected ? (
+                      <>
+                        <Check size={16} />
+                        Deselect All
+                      </>
+                    ) : (
+                      <>
+                        <Square size={16} />
+                        Select All
+                      </>
+                    )}
+                  </button>
+                </div>
                 <ul className="mt-4 divide-y divide-gray-200">
                   {items.map((item) => (
                     <li key={item.id} className="flex items-center justify-between py-4">
-                      <div>
-                        <p className="font-semibold">{item.title}</p>
-                        <p className="text-sm text-gray-500">
-                          by {item.teacher.name}
-                        </p>
+                      <div className="flex items-center gap-3">
+                        <button
+                          onClick={() => toggleItemSelection(item.id)}
+                          className={item.selected ? "text-blue-600" : "text-gray-400"}
+                        >
+                          {item.selected ? <Check size={20} /> : <Square size={20} />}
+                        </button>
+                        <div>
+                          <p className={`font-semibold ${!item.selected ? 'text-gray-400' : ''}`}>
+                            {item.title}
+                          </p>
+                          <p className="text-sm text-gray-500">
+                            by {item.teacher.name}
+                          </p>
+                        </div>
                       </div>
                       <div className="flex items-center gap-4">
-                        <p className="font-semibold">
+                        <p className={`font-semibold ${!item.selected ? 'text-gray-400' : ''}`}>
                           ${item.price.toFixed(2)}
                         </p>
                         <button
@@ -110,7 +156,10 @@ export default function Payment() {
                     </li>
                   ))}
                 </ul>
-                <div className="mt-4 flex justify-end border-t pt-4">
+                <div className="mt-4 flex justify-between items-center border-t pt-4">
+                  <p className="text-sm text-gray-600">
+                    {selectedCount} of {items.length} items selected
+                  </p>
                   <p className="text-lg font-bold">
                     Total: ${totalPrice.toFixed(2)}
                   </p>
@@ -155,22 +204,24 @@ export default function Payment() {
               )}
 
 
-              <div className="flex justify-end">
-                <button
-                  onClick={handlePurchase}
-                  disabled={!selectedMethodId || purchaseMutation.isPending || isProcessing}
-                  className="inline-flex min-w-[150px] items-center justify-center rounded-lg bg-blue-600 px-6 py-3 font-semibold text-white shadow-sm transition-colors hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-gray-400"
-                >
-                  {isProcessing ? (
-                    <>
-                      <Loader2 className="mr-2 animate-spin" />
-                      Processing...
-                    </>
-                  ) : (
-                    "Confirm Purchase"
-                  )}
-                </button>
-              </div>
+              {selectedItems.length > 0 && (
+                <div className="flex justify-end">
+                  <button
+                    onClick={handlePurchase}
+                    disabled={!selectedMethodId || purchaseMutation.isPending || isProcessing}
+                    className="inline-flex min-w-[150px] items-center justify-center rounded-lg bg-blue-600 px-6 py-3 font-semibold text-white shadow-sm transition-colors hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-gray-400"
+                  >
+                    {isProcessing ? (
+                      <>
+                        <Loader2 className="mr-2 animate-spin" />
+                        Processing...
+                      </>
+                    ) : (
+                      `Pay $${totalPrice.toFixed(2)}`
+                    )}
+                  </button>
+                </div>
+              )}
             </div>
           ) : (
             <div className="mt-16 flex flex-col items-center justify-center text-center">
