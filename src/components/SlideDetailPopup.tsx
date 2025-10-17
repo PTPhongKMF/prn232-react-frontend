@@ -1,6 +1,5 @@
 import { useState, Fragment } from "react";
-import { X, ChevronLeft, ChevronRight, FileImage, Download, FileSpreadsheet } from "lucide-react";
-import { cn } from "src/utils/cn";
+import { ChevronLeft, ChevronRight, FileImage, Download, FileSpreadsheet } from "lucide-react";
 import type { SlideWithTeacher } from "src/types/slide/slide";
 import { Dialog, Transition } from '@headlessui/react';
 import { backendUrl } from "src/services/ApiService";

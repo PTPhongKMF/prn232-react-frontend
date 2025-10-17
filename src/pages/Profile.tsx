@@ -1,11 +1,10 @@
 import { useProfile, useUpdateProfileMutation, useDeleteAccountMutation } from "src/hooks/useAuth";
-import { Loader2, User, Mail, Lock, GraduationCap, CircleAlert, CircleCheck } from "lucide-react";
+import { Loader2, User, Mail, Lock, GraduationCap } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Input } from "src/components/libs/shadcn/input";
 import GenericDeleteDialog from "src/components/GenericDeleteDialog";
 import { useNavigate } from "react-router";
 import { Cookies } from "typescript-cookie";
-import { cn } from "src/utils/cn";
 
 export default function Profile() {
   const { data: user, isLoading, isError, error } = useProfile();
