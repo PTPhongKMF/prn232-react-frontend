@@ -1,7 +1,8 @@
 import { useState } from "react";
 import { useParams } from "react-router";
 import { useSlidesByTeacherId, useUpdateSlideStatusMutation, useUpdateSlideMutation, usePublicSlides } from "src/hooks/useSlides";
-import { Loader2, DollarSign, GraduationCap, Calendar, FileWarning, FileType, Edit, X, Save, FileText, Tag, UploadCloud, Eye, User } from "lucide-react";
+import { Loader2, DollarSign, GraduationCap, Calendar, FileWarning, FileType, Edit, X, Save, FileText, Tag, UploadCloud, Eye } from "lucide-react";
+import { backendUrl } from "src/services/ApiService";
 import { cn } from "src/utils/cn";
 import { useProfile } from "src/hooks/useAuth";
 import type { Slide, SlideUpdateData, SlideWithTeacher } from "src/types/slide/slide";
@@ -9,10 +10,17 @@ import { Input } from "src/components/libs/shadcn/input";
 import SlideDetailPopup from "src/components/SlideDetailPopup";
 
 export default function Slides() {
+  console.log("🚀 Slides component is rendering!");
+  
   const { userId } = useParams();
   const { data: currentUser } = useProfile();
   
+  // Debug logging
+  console.log("Slides component - userId from params:", userId);
+  console.log("Slides component - current user role:", currentUser?.role);
+  
   const teacherId = userId ? Number(userId) : undefined;
+  console.log("Slides component - teacherId:", teacherId);
   
   // Use different hooks based on whether userId is provided
   const { 
@@ -35,6 +43,9 @@ export default function Slides() {
   const isLoading = isViewingSpecificUser ? isLoadingTeacherSlides : isLoadingPublicSlides;
   const isError = isViewingSpecificUser ? isErrorTeacherSlides : isErrorPublicSlides;
   const error = isViewingSpecificUser ? errorTeacherSlides : errorPublicSlides;
+  
+  console.log("Slides component - isViewingSpecificUser:", isViewingSpecificUser);
+  console.log("Slides component - slides data:", slides);
 
   const updateSlideStatusMutation = useUpdateSlideStatusMutation();
   const updateSlideMutation = useUpdateSlideMutation();
@@ -114,7 +125,7 @@ export default function Slides() {
     // Convert Slide to SlideWithTeacher if needed
     const slideWithTeacher = 'teacher' in slide 
       ? slide as SlideWithTeacher 
-      : { ...slide, teacher: { id: slide.teacherId, name: 'Unknown Teacher', email: '', role: '', grade: 0, isDeleted: false } } as SlideWithTeacher;
+      : { ...slide, teacher: { id: slide.teacherId, name: 'Unknown Teacher' } } as SlideWithTeacher;
     
     setSelectedSlide(slideWithTeacher);
     setShowSlideDetail(true);
@@ -134,14 +145,22 @@ export default function Slides() {
   }
 
   if (isError) {
+    console.error("Slides component - Error loading slides:", error);
     return (
       <div className="flex min-h-screen flex-col items-center justify-center bg-amber-50 pt-16 text-center">
         <FileWarning className="h-16 w-16 text-red-500" />
         <h2 className="mt-4 text-2xl font-bold text-gray-800">Failed to Load Slides</h2>
         <p className="mt-2 text-red-500">{error?.message || "An unexpected error occurred."}</p>
+        <div className="mt-4 text-sm text-gray-600">
+          <p>Teacher ID: {teacherId}</p>
+          <p>User ID from params: {userId}</p>
+        </div>
       </div>
     );
   }
+
+  // Debug info
+  console.log("Slides component - Current state:", { slides, isLoading, isError, error, teacherId, userId });
 
   return (
     <div className="min-h-[100svh] bg-amber-50 px-4 pt-24 sm:px-6 lg:px-8">
@@ -163,6 +182,11 @@ export default function Slides() {
                 : "A collection of all the slides you have uploaded."
             }
           </p>
+          {/* Debug info */}
+          <div className="mt-2 text-xs text-gray-400">
+            <p>Debug: Teacher ID: {teacherId}, User ID: {userId}, Role: {currentUser?.role}, Slides count: {slides?.length || 0}</p>
+            <p>API: {isViewingSpecificUser ? `api/Slides/user/${teacherId}` : 'api/Slides/public'}</p>
+          </div>
         </div>
 
         {slides && slides.length > 0 ? (
@@ -246,8 +270,8 @@ export default function Slides() {
                         {/* Show teacher info for public slides */}
                         {!isViewingSpecificUser && 'teacher' in slide && (
                           <div className="flex items-center gap-2">
-                            <User size={16} className="text-gray-400" />
-                            <span>By: {(slide as SlideWithTeacher).teacher?.name || 'Unknown'}</span>
+                            <span className="text-gray-400">👨‍🏫</span>
+                            <span>By: {(slide as SlideWithTeacher).teacher.name}</span>
                           </div>
                         )}
                       </div>
@@ -286,6 +310,10 @@ export default function Slides() {
                   : "You haven't uploaded any slides yet. Go ahead and upload your first one!"
               }
             </p>
+            <div className="mt-4 text-sm text-gray-400">
+              <p>Debug: Teacher ID: {teacherId}, User ID: {userId}</p>
+              <p>Slides data: {slides ? JSON.stringify(slides) : 'null'}</p>
+            </div>
           </div>
         )}
       </div>
