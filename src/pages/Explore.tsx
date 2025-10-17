@@ -13,7 +13,7 @@ import {
   BookOpen,
   Info,
   Library,
-  FileType, // <-- Import FileType icon
+  FileType,
 } from "lucide-react";
 import { Input } from "../components/libs/shadcn/input";
 import { cn } from "../utils/cn";
@@ -74,14 +74,12 @@ const SlideDetailModal = ({ slide, isOpen, onClose }: { slide: SlideWithTeacher 
                   {slide.title}
                 </Dialog.Title>
                 
-                {/* ===== MODIFIED SECTION START ===== */}
                 <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-gray-500">
-                    <div className="flex items-center gap-1.5"><User size={14} /> By {slide.teacher.name}</div>
+                    <div className="flex items-center gap-1.5"><User size={14} /> By {slide.teacher?.name || 'Unknown'}</div>
                     <div className="flex items-center gap-1.5"><GraduationCap size={14} /> Grade {slide.grade || 'All'}</div>
                     <div className="flex items-center gap-1.5"><Calendar size={14} /> {formatDate(slide.createdAt)}</div>
                     <div className="flex items-center gap-1.5"><FileType size={14} /> {getFileType(slide.contentType)}</div>
                 </div>
-                {/* ===== MODIFIED SECTION END ===== */}
 
 
                 <div className="mt-6">
@@ -129,7 +127,6 @@ const SlideDetailModal = ({ slide, isOpen, onClose }: { slide: SlideWithTeacher 
 
 
 const SlideCard = ({ slide, currentUser, onAddToCart, onViewDetails, isPurchased }: { slide: SlideWithTeacher, currentUser: any, onAddToCart: (slide: SlideWithTeacher) => void, onViewDetails: (slide: SlideWithTeacher) => void, isPurchased: boolean }) => {
-  // ... (no changes in this component)
   const { items: cartItems } = useCart();
   const isInCart = cartItems.some(item => item.id === slide.id);
   const canPurchase = currentUser?.role === 'Student' && currentUser?.id !== slide.teacher.id;
@@ -195,7 +192,6 @@ const SlideCard = ({ slide, currentUser, onAddToCart, onViewDetails, isPurchased
 };
 
 export default function Explore() {
-  // ... (no changes in this component)
   const { data: slides, isLoading: isLoadingSlides, isError, error } = usePublicSlides();
   const { data: currentUser } = useProfile();
   const { data: purchaseHistory, isLoading: isLoadingHistory } = usePurchaseHistory();
