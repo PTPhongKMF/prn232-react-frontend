@@ -90,18 +90,9 @@ export function usePublicSlides() {
     return useQuery<SlideWithTeacher[], HTTPError>({
       queryKey: ["publicSlides"],
       queryFn: async () => {
-        console.log("usePublicSlides - Fetching public slides");
-        try {
-          const response = await kyAspDotnet.get(`api/Slides/public`).json();
-          console.log("usePublicSlides - API response:", response);
-          const parsed = v.parse(createApiSuccessResponseSchema(v.array(v.any())), response);
-          console.log("usePublicSlides - Parsed data:", parsed.data);
-          return parsed.data as SlideWithTeacher[];
-        } catch (error) {
-          console.error("usePublicSlides - API call failed:", error);
-          throw error;
-        }
+        const response = await kyAspDotnet.get(`api/Slides/public`).json();
+        const parsed = v.parse(createApiSuccessResponseSchema(v.array(v.any())), response);
+        return parsed.data as SlideWithTeacher[];
       },
-      retry: false, // Không retry để dễ debug
     });
   }

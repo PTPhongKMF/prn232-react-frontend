@@ -39,7 +39,7 @@ export default function Register() {
     <div className="flex min-h-[100svh] items-center justify-center bg-amber-50 bg-[url(/imgs/bg/login.png)] bg-cover p-4">
       <form
         onSubmit={handleSubmit}
-        className="grid w-100 max-w-md grid-rows-[auto_1fr_auto] items-center rounded-3xl border-2 border-yellow-400 bg-gray-50 px-6 py-8 shadow-[8px_8px_0px_0px_rgba(0,0,0,0.25)]"
+        className="grid w-full max-w-md grid-rows-[auto_1fr_auto] items-center rounded-3xl border-2 border-yellow-400 bg-gray-50 px-6 py-8 shadow-[8px_8px_0px_0px_rgba(0,0,0,0.25)]"
       >
         {/* Header */}
         <div className="flex flex-col items-center justify-center self-start">

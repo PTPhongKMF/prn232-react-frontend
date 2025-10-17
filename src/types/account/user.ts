@@ -7,7 +7,6 @@ export const UserSchema = v.object({
   password: v.string(),
   role: v.string(),
   grade: v.optional(v.number()),
-  isDeleted: v.boolean(),
 });
 
 export type User = v.InferOutput<typeof UserSchema>;

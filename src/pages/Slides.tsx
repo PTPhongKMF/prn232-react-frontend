@@ -1,51 +1,17 @@
 import { useState } from "react";
 import { useParams } from "react-router";
-import { useSlidesByTeacherId, useUpdateSlideStatusMutation, useUpdateSlideMutation, usePublicSlides } from "src/hooks/useSlides";
-import { Loader2, DollarSign, GraduationCap, Calendar, FileWarning, FileType, Edit, X, Save, FileText, Tag, UploadCloud, Eye } from "lucide-react";
+import { useSlidesByTeacherId, useUpdateSlideStatusMutation, useUpdateSlideMutation } from "src/hooks/useSlides";
+import { Loader2, DollarSign, GraduationCap, Calendar, FileWarning, FileType, Edit, X, Save, FileText, Tag, UploadCloud } from "lucide-react";
 import { backendUrl } from "src/services/ApiService";
 import { cn } from "src/utils/cn";
 import { useProfile } from "src/hooks/useAuth";
-import type { Slide, SlideUpdateData, SlideWithTeacher } from "src/types/slide/slide";
+import type { Slide, SlideUpdateData } from "src/types/slide/slide";
 import { Input } from "src/components/libs/shadcn/input";
-import SlideDetailPopup from "src/components/SlideDetailPopup";
 
 export default function Slides() {
-  console.log("🚀 Slides component is rendering!");
-  
   const { userId } = useParams();
   const { data: currentUser } = useProfile();
-  
-  // Debug logging
-  console.log("Slides component - userId from params:", userId);
-  console.log("Slides component - current user role:", currentUser?.role);
-  
-  const teacherId = userId ? Number(userId) : undefined;
-  console.log("Slides component - teacherId:", teacherId);
-  
-  // Use different hooks based on whether userId is provided
-  const { 
-    data: teacherSlides, 
-    isLoading: isLoadingTeacherSlides, 
-    isError: isErrorTeacherSlides, 
-    error: errorTeacherSlides 
-  } = useSlidesByTeacherId(teacherId);
-  
-  const { 
-    data: publicSlides, 
-    isLoading: isLoadingPublicSlides, 
-    isError: isErrorPublicSlides, 
-    error: errorPublicSlides 
-  } = usePublicSlides();
-  
-  // Determine which data to use
-  const isViewingSpecificUser = !!userId;
-  const slides = isViewingSpecificUser ? teacherSlides : publicSlides;
-  const isLoading = isViewingSpecificUser ? isLoadingTeacherSlides : isLoadingPublicSlides;
-  const isError = isViewingSpecificUser ? isErrorTeacherSlides : isErrorPublicSlides;
-  const error = isViewingSpecificUser ? errorTeacherSlides : errorPublicSlides;
-  
-  console.log("Slides component - isViewingSpecificUser:", isViewingSpecificUser);
-  console.log("Slides component - slides data:", slides);
+  const { data: slides, isLoading, isError, error } = useSlidesByTeacherId(Number(userId));
 
   const updateSlideStatusMutation = useUpdateSlideStatusMutation();
   const updateSlideMutation = useUpdateSlideMutation();
@@ -53,10 +19,6 @@ export default function Slides() {
   const [editingSlideId, setEditingSlideId] = useState<number | null>(null);
   const [editFormData, setEditFormData] = useState<Partial<SlideUpdateData>>({});
   const [editFile, setEditFile] = useState<File | null>(null);
-  
-  // Popup states
-  const [selectedSlide, setSelectedSlide] = useState<SlideWithTeacher | null>(null);
-  const [showSlideDetail, setShowSlideDetail] = useState(false);
 
   const handleEditClick = (slide: Slide) => {
     setEditingSlideId(slide.id);
@@ -121,21 +83,6 @@ export default function Slides() {
     updateSlideStatusMutation.mutate({ slideId: slide.id, isPublished: !slide.isPublished });
   };
 
-  const handleViewSlide = (slide: Slide | SlideWithTeacher) => {
-    // Convert Slide to SlideWithTeacher if needed
-    const slideWithTeacher = 'teacher' in slide 
-      ? slide as SlideWithTeacher 
-      : { ...slide, teacher: { id: slide.teacherId, name: 'Unknown Teacher' } } as SlideWithTeacher;
-    
-    setSelectedSlide(slideWithTeacher);
-    setShowSlideDetail(true);
-  };
-
-  const closePopups = () => {
-    setShowSlideDetail(false);
-    setSelectedSlide(null);
-  };
-
   if (isLoading) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-amber-50 pt-16">
@@ -145,48 +92,21 @@ export default function Slides() {
   }
 
   if (isError) {
-    console.error("Slides component - Error loading slides:", error);
     return (
       <div className="flex min-h-screen flex-col items-center justify-center bg-amber-50 pt-16 text-center">
         <FileWarning className="h-16 w-16 text-red-500" />
         <h2 className="mt-4 text-2xl font-bold text-gray-800">Failed to Load Slides</h2>
         <p className="mt-2 text-red-500">{error?.message || "An unexpected error occurred."}</p>
-        <div className="mt-4 text-sm text-gray-600">
-          <p>Teacher ID: {teacherId}</p>
-          <p>User ID from params: {userId}</p>
-        </div>
       </div>
     );
   }
-
-  // Debug info
-  console.log("Slides component - Current state:", { slides, isLoading, isError, error, teacherId, userId });
 
   return (
     <div className="min-h-[100svh] bg-amber-50 px-4 pt-24 sm:px-6 lg:px-8">
       <div className="mx-auto max-w-7xl">
         <div className="border-b border-gray-200 pb-5">
-          <h1 className="text-3xl font-bold leading-tight tracking-tight text-gray-900">
-            {isViewingSpecificUser 
-              ? `Slides by User ${teacherId}` 
-              : currentUser?.role === 'Student' 
-                ? "All Public Slides" 
-                : "My Uploaded Slides"
-            }
-          </h1>
-          <p className="mt-2 max-w-4xl text-sm text-gray-500">
-            {isViewingSpecificUser 
-              ? `A collection of all slides uploaded by user ${teacherId}.`
-              : currentUser?.role === 'Student'
-                ? "Browse and explore all available public slides from our community."
-                : "A collection of all the slides you have uploaded."
-            }
-          </p>
-          {/* Debug info */}
-          <div className="mt-2 text-xs text-gray-400">
-            <p>Debug: Teacher ID: {teacherId}, User ID: {userId}, Role: {currentUser?.role}, Slides count: {slides?.length || 0}</p>
-            <p>API: {isViewingSpecificUser ? `api/Slides/user/${teacherId}` : 'api/Slides/public'}</p>
-          </div>
+          <h1 className="text-3xl font-bold leading-tight tracking-tight text-gray-900">My Uploaded Slides</h1>
+          <p className="mt-2 max-w-4xl text-sm text-gray-500">A collection of all the slides you have uploaded.</p>
         </div>
 
         {slides && slides.length > 0 ? (
@@ -267,31 +187,11 @@ export default function Slides() {
                         <div className="flex items-center gap-2"><GraduationCap size={16} className="text-gray-400" /><span>Grade: {slide.grade || "All Levels"}</span></div>
                         <div className="flex items-center gap-2"><Calendar size={16} className="text-gray-400" /><span>Uploaded: {formatDate(slide.createdAt)}</span></div>
                         <div className="flex items-center gap-2"><DollarSign size={16} className="text-gray-400" /><span>Price: ${slide.price.toFixed(2)}</span></div>
-                        {/* Show teacher info for public slides */}
-                        {!isViewingSpecificUser && 'teacher' in slide && (
-                          <div className="flex items-center gap-2">
-                            <span className="text-gray-400">👨‍🏫</span>
-                            <span>By: {(slide as SlideWithTeacher).teacher.name}</span>
-                          </div>
-                        )}
                       </div>
                     </div>
                     <div className="flex items-center gap-2 bg-gray-50 px-6 py-4">
-                      <button 
-                        onClick={() => handleViewSlide(slide)}
-                        className="flex-1 flex items-center justify-center gap-2 rounded-md bg-blue-600 px-4 py-2 text-center text-sm font-semibold text-white shadow-sm transition-colors hover:bg-blue-700"
-                      >
-                        <Eye size={16} />
-                        View Slide
-                      </button>
-                      {currentUser?.id === slide.teacherId && (
-                        <button 
-                          onClick={() => handleEditClick(slide)} 
-                          className="rounded-md bg-gray-200 p-2 text-gray-600 transition-colors hover:bg-gray-300"
-                        >
-                          <Edit size={20} />
-                        </button>
-                      )}
+                      {slide.fileUrl && <a href={`${backendUrl.slice(0, -1)}${slide.fileUrl}`} target="_blank" rel="noopener noreferrer" className="inline-block w-full rounded-md bg-blue-600 px-4 py-2 text-center text-sm font-semibold text-white shadow-sm transition-colors hover:bg-blue-700">View Slide</a>}
+                      {currentUser?.id === slide.teacherId && <button onClick={() => handleEditClick(slide)} className="rounded-md bg-gray-200 p-2 text-gray-600 transition-colors hover:bg-gray-300"><Edit size={20} /></button>}
                     </div>
                   </>
                 )}
@@ -302,28 +202,10 @@ export default function Slides() {
           <div className="mt-16 flex flex-col items-center justify-center text-center">
             <FileWarning className="h-20 w-20 text-gray-400" />
             <h2 className="mt-4 text-2xl font-bold text-gray-800">No Slides Found</h2>
-            <p className="mt-2 text-gray-500">
-              {isViewingSpecificUser 
-                ? `User ${teacherId} hasn't uploaded any slides yet.` 
-                : currentUser?.role === 'Student'
-                  ? "No public slides are available at the moment."
-                  : "You haven't uploaded any slides yet. Go ahead and upload your first one!"
-              }
-            </p>
-            <div className="mt-4 text-sm text-gray-400">
-              <p>Debug: Teacher ID: {teacherId}, User ID: {userId}</p>
-              <p>Slides data: {slides ? JSON.stringify(slides) : 'null'}</p>
-            </div>
+            <p className="mt-2 text-gray-500">You haven't uploaded any slides yet. Go ahead and upload your first one!</p>
           </div>
         )}
       </div>
-      
-      {/* Popup Components */}
-      <SlideDetailPopup
-        slide={selectedSlide}
-        isOpen={showSlideDetail}
-        onClose={closePopups}
-      />
     </div>
   );
 }

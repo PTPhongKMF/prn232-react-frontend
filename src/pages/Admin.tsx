@@ -3,7 +3,7 @@ import { Loader2, Save, CircleCheck, CircleAlert, ChevronLeft, ChevronRight, Tra
 import { useState, useEffect } from "react";
 import { useProfile, type User } from "src/hooks/useAuth";
 import { cn } from "src/utils/cn";
-import GenericDeleteDialog from "src/components/GenericDeleteDialog";
+import DeleteConfirmationModal from "src/components/DeleteConfirmationModal";
 
 type Feedback = {
   message: string;
@@ -110,13 +110,11 @@ export default function Admin() {
 
   return (
     <div className="min-h-[100svh] bg-amber-50 px-4 pt-24 sm:px-6 lg:px-8">
-      <GenericDeleteDialog
+      <DeleteConfirmationModal
         isOpen={!!userToDelete}
         onClose={() => setUserToDelete(null)}
         onConfirm={confirmDelete}
-        title="Delete User"
-        itemName={userToDelete?.name || ""}
-        isLoading={deleteUserMutation.isPending}
+        userName={userToDelete?.name || ""}
       />
       <div className="mx-auto max-w-7xl">
         <div className="border-b border-gray-200 pb-5">
@@ -169,25 +167,14 @@ export default function Admin() {
                     return (
                       <tr key={user.id} className="align-middle">
                         <td className="whitespace-nowrap py-5 pl-4 pr-3 text-sm sm:pl-6">
-                          <div className="font-medium">
-                            <span className={cn({
-                              "text-gray-900": !user.isDeleted,
-                              "text-gray-400 line-through": user.isDeleted,
-                            })}>
-                              {user.name}
-                            </span>
-                            {user.isDeleted && <span className="ml-2 text-xs font-normal text-gray-400">(Deleted)</span>}
-                          </div>
-                          <div className={cn("mt-1", {
-                            "text-gray-500": !user.isDeleted,
-                            "text-gray-400": user.isDeleted,
-                          })}>{user.email}</div>
+                          <div className="font-medium text-gray-900">{user.name}</div>
+                          <div className="mt-1 text-gray-500">{user.email}</div>
                         </td>
                         <td className="whitespace-nowrap px-3 py-5 text-sm text-gray-500">
                           <select
                             value={editingUsers[user.id]?.role ?? user.role}
                             onChange={(e) => handleFieldChange(user.id, "role", e.target.value)}
-                            disabled={isAdminRow || user.isDeleted}
+                            disabled={isAdminRow}
                             className={cn(
                               "file:text-foreground placeholder:text-muted-foreground border-input h-9 w-full min-w-0 rounded-md border bg-transparent px-3 py-1 text-base shadow-xs transition-[color,box-shadow] outline-none file:h-7 file:border-0 file:bg-transparent file:text-sm file:font-medium disabled:cursor-not-allowed disabled:opacity-50 md:text-sm focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px]",
                             )}
@@ -201,7 +188,7 @@ export default function Admin() {
                           <select
                             value={editingUsers[user.id]?.grade ?? user.grade ?? ""}
                             onChange={(e) => handleFieldChange(user.id, "grade", e.target.value)}
-                            disabled={isAdminRow || user.isDeleted}
+                            disabled={isAdminRow}
                             className={cn(
                               "w-32 file:text-foreground placeholder:text-muted-foreground border-input h-9 min-w-0 rounded-md border bg-transparent px-3 py-1 text-base shadow-xs transition-[color,box-shadow] outline-none file:h-7 file:border-0 file:bg-transparent file:text-sm file:font-medium disabled:cursor-not-allowed disabled:opacity-50 md:text-sm focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px]",
                             )}
@@ -215,7 +202,7 @@ export default function Admin() {
                           </select>
                         </td>
                         <td className="relative whitespace-nowrap py-5 pl-3 pr-4 text-right text-sm font-medium sm:pr-6">
-                          {!isAdminRow && !user.isDeleted && (
+                          {!isAdminRow && (
                             <div className="flex items-center justify-end gap-x-2">
                               <button
                                 onClick={() => handleSave(user.id)}
