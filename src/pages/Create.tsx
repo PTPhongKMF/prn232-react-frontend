@@ -1,516 +1,2584 @@
-// src/pages/Create.tsx
-import React, { useState, useRef, useCallback, useEffect } from 'react';
-import {
-  Save, Undo, Redo, Type, Image, Square, Shapes, Trash2, Upload, Plus,
-  Bold, Italic, Underline, AlignLeft, AlignCenter, AlignRight, List, Minus,
-  Palette, Copy, Clipboard, Layers, FileDown, ZoomIn, ZoomOut, ChevronLeft,
-  Image as ImageIcon
-} from 'lucide-react';
-import { cn } from 'src/utils/cn';
-import { useCreateSlideMutation } from 'src/hooks/useSlides';
-import PptxGenJS from 'pptxgenjs';
-import { Slot } from "@radix-ui/react-slot"; // Thêm import Slot
-
-// Import các component shadcn/ui mà bạn CÓ
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "src/components/libs/shadcn/dialog";
-import { Input } from "src/components/libs/shadcn/input";
-
-// --- Component Giả Lập (Vì bạn chưa có các tệp này) ---
-// (Component Button giả lập - Đã sửa lỗi 'icon-lg' và 'Slot')
-const Button = React.forwardRef<
-  HTMLButtonElement,
-  React.ButtonHTMLAttributes<HTMLButtonElement> & { variant?: string; size?: string; asChild?: boolean }
->(({ className, variant, size, asChild = false, ...props }, ref) => {
-  const Comp = asChild ? Slot : "button"; // Sửa: Dùng Slot
-  const baseStyle = "inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors disabled:opacity-50 disabled:pointer-events-none";
-  const variantStyle = variant === "outline" ? "border border-gray-300 bg-white hover:bg-gray-50" :
-                     variant === "ghost" ? "hover:bg-gray-100" :
-                     variant === "destructive" ? "bg-red-500 text-white hover:bg-red-600" :
-                     "bg-blue-600 text-white hover:bg-blue-700";
-  // Sửa: Thêm 'icon-lg'
-  const sizeStyle = size === "icon" ? "h-10 w-10" :
-                    size === "icon-sm" ? "h-8 w-8" :
-                    size === "icon-xs" ? "h-6 w-6" :
-                    size === "icon-lg" ? "h-12 w-12" : // Đã thêm
-                    size === "sm" ? "h-9 px-3" :
-                    "h-10 px-4 py-2";
-  return <Comp className={cn(baseStyle, variantStyle, sizeStyle, className)} ref={ref} {...props} />;
-});
-Button.displayName = "Button";
-
-// (Component Label giả lập)
-const Label = React.forwardRef<
-  HTMLLabelElement,
-  React.LabelHTMLAttributes<HTMLLabelElement>
->(({ className, ...props }, ref) => {
-  return <label ref={ref} className={cn("text-sm font-medium leading-none", className)} {...props} />;
-});
-Label.displayName = "Label";
-
-// (Component Tooltip giả lập - Đã sửa)
-const TooltipProvider = ({ children, delayDuration }: { children: React.ReactNode; delayDuration?: number }) => <>{children}</>;
-const Tooltip = ({ children }: { children: React.ReactNode }) => <div className="relative inline-block">{children}</div>;
-const TooltipTrigger = ({ children, asChild }: { children: React.ReactNode; asChild?: boolean }) => asChild ? <>{children}</> : <div>{children}</div>;
-const TooltipContent = React.forwardRef<
-  HTMLDivElement,
-  React.HTMLAttributes<HTMLDivElement> & { side?: string; sideOffset?: number }
->(({ className, side, sideOffset, ...props }, ref) => (
-  <div
-    ref={ref}
-    className={cn(
-      "z-50 overflow-hidden rounded-md border bg-white border-gray-200 text-gray-900 px-3 py-1.5 text-sm shadow-md animate-in fade-in-0 zoom-in-95",
-      "hidden group-hover:block", // Giả lập hiển thị tooltip đơn giản
-      className
-    )}
-    {...props}
-  />
-));
-TooltipContent.displayName = "TooltipContent";
-// --- Kết thúc Component Giả Lập ---
-
-
-// Import Types
-import type { 
-    Slide, SlideElement, InteractionState, DragResizeInfo, SidebarTab, SaveOptions, SlideElementStyle 
-} from '../types/create'; 
+import { useState, useRef, useCallback, useEffect } from "react";
 import { 
-    CANVAS_WIDTH, CANVAS_HEIGHT, MIN_ELEMENT_WIDTH, MIN_ELEMENT_HEIGHT, ZOOM_STEP, MIN_ZOOM, MAX_ZOOM 
-} from '../types/create'; 
+  Save, 
+  Undo, 
+  Redo, 
+  Type, 
+  Image, 
+  Square,
+  Table,
+  Shapes,
+  Grid3X3,
+  Trash2,
+  FileText,
+  Upload,
+  Plus,
+  ChevronRight,
+  Bold,
+  Italic,
+  Underline,
+  AlignLeft,
+  AlignCenter,
+  AlignRight,
+  AlignJustify,
+  List,
+  Minus,
+  Palette,
+  Copy,
+  Clipboard,
+  Layers,
+  FileDown
+} from "lucide-react";
+import { cn } from "src/utils/cn";
+import { useCreateSlideMutation } from "src/hooks/useSlides";
+import PptxGenJS from "pptxgenjs";
 
-// Hằng số
-const INITIAL_SLIDES: Slide[] = [{ id: `slide-${Date.now()}`, elements: [], backgroundColor: '#ffffff' }];
+// Types
+interface SlideElement {
+  id: string;
+  type: 'text' | 'image' | 'shape' | 'table' | 'graphic';
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  content?: string;
+  isEditing?: boolean;
+  style?: {
+    fontSize?: number;
+    fontFamily?: string;
+    color?: string;
+    backgroundColor?: string;
+    borderRadius?: number;
+    fontWeight?: 'normal' | 'bold';
+    fontStyle?: 'normal' | 'italic';
+    textDecoration?: 'none' | 'underline';
+    textAlign?: 'left' | 'center' | 'right' | 'justify';
+  };
+}
+
+interface Slide {
+  id: string;
+  elements: SlideElement[];
+  backgroundColor: string;
+}
+
+export default function Create() {
+  const canvasRef = useRef<HTMLDivElement>(null);
+  const initialSlides = [
+    {
+      id: '1',
+      elements: [],
+      backgroundColor: '#ffffff'
+    }
+  ];
+  
+  const [slides, setSlides] = useState<Slide[]>(initialSlides);
+  
+  // Debug: Log when slides state changes
+  useEffect(() => {
+    console.log('Slides state changed:', slides.length, slides);
+  }, [slides]);
+  const [currentSlideIndex, setCurrentSlideIndex] = useState(0);
+  const [selectedElement, setSelectedElement] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<'design' | 'elements' | 'text' | 'uploads'>('design');
+  const [hoveredTab, setHoveredTab] = useState<string | null>(null);
+  const [isSidebarExpanded, setIsSidebarExpanded] = useState(false);
+  const [history, setHistory] = useState<Slide[][]>([initialSlides]);
+  const [historyIndex, setHistoryIndex] = useState(0);
+  const [isDragging, setIsDragging] = useState(false);
+  const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
+  const [dragPreview, setDragPreview] = useState<{ x: number; y: number } | null>(null);
+  const [isResizing, setIsResizing] = useState(false);
+  const [resizeHandle, setResizeHandle] = useState<string | null>(null);
+  const [showTextToolbar, setShowTextToolbar] = useState(false);
+  const [savedSelection, setSavedSelection] = useState<{ start: number; end: number } | null>(null);
+  const [contextMenu, setContextMenu] = useState<{ x: number; y: number; slideIndex: number } | null>(null);
+  const [copiedSlide, setCopiedSlide] = useState<Slide | null>(null);
+  const [isDraggingSlide, setIsDraggingSlide] = useState(false);
+  const [dragSlideIndex, setDragSlideIndex] = useState<number | null>(null);
+  const [showSaveDialog, setShowSaveDialog] = useState(false);
+  const [slideTitle, setSlideTitle] = useState('');
+  const [slideTopic, setSlideTopic] = useState('');
+  const [slidePrice, setSlidePrice] = useState(0);
+  const [slideGrade, setSlideGrade] = useState<number | undefined>();
+
+  const currentSlide = slides[currentSlideIndex];
+  const createSlideMutation = useCreateSlideMutation();
+
+  // Add element to slide
+  const addElement = useCallback((type: SlideElement['type'], textStyle?: 'heading' | 'subheading' | 'body', symbol?: string) => {
+    let content = '';
+    let fontSize = 16;
+    let fontWeight: 'normal' | 'bold' = 'normal';
+    
+    if (type === 'text') {
+      if (symbol) {
+        // Math symbol
+        content = symbol;
+        fontSize = 48;
+        fontWeight = 'bold';
+      } else {
+        switch (textStyle) {
+          case 'heading':
+            content = 'Add a heading';
+            fontSize = 32;
+            fontWeight = 'bold';
+            break;
+          case 'subheading':
+            content = 'Add a subheading';
+            fontSize = 24;
+            fontWeight = 'bold';
+            break;
+          case 'body':
+            content = 'Add a little bit of body text';
+            fontSize = 16;
+            fontWeight = 'normal';
+            break;
+          default:
+            content = 'Text';
+            fontSize = 16;
+            fontWeight = 'normal';
+        }
+      }
+    }
+
+    const newElement: SlideElement = {
+      id: `element-${Date.now()}`,
+      type,
+      x: 100,
+      y: 100,
+      width: type === 'text' ? (textStyle === 'heading' ? 300 : 200) : type === 'image' ? 150 : 100,
+      height: type === 'text' ? (textStyle === 'heading' ? 60 : 50) : type === 'image' ? 150 : 100,
+      content,
+      isEditing: type === 'text',
+      style: {
+        fontSize,
+        fontFamily: 'Arial',
+        color: '#000000',
+        fontWeight,
+        textAlign: 'left',
+        backgroundColor: type === 'shape' ? '#3b82f6' : undefined,
+        borderRadius: type === 'shape' ? 0 : undefined,
+      }
+    };
+
+    const newSlides = slides.map((slide, index) => {
+      if (index === currentSlideIndex) {
+        return {
+          ...slide,
+          elements: [...slide.elements, newElement]
+        };
+      }
+      return slide;
+    });
+
+    setSlides(newSlides);
+    setSelectedElement(newElement.id);
+    saveToHistory(newSlides);
+  }, [slides, currentSlideIndex]);
+
+  // Save to history for undo/redo
+  const saveToHistory = useCallback((newSlides: Slide[]) => {
+    const newHistory = history.slice(0, historyIndex + 1);
+    newHistory.push(newSlides);
+    setHistory(newHistory);
+    setHistoryIndex(newHistory.length - 1);
+  }, [history, historyIndex]);
+
+  // Undo
+  const undo = useCallback(() => {
+    if (historyIndex > 0) {
+      setHistoryIndex(historyIndex - 1);
+      setSlides(history[historyIndex - 1]);
+    }
+  }, [historyIndex, history]);
+
+  // Redo
+  const redo = useCallback(() => {
+    if (historyIndex < history.length - 1) {
+      setHistoryIndex(historyIndex + 1);
+      setSlides(history[historyIndex + 1]);
+    }
+  }, [historyIndex, history]);
+
+  // Handle element selection
+  const handleElementClick = (elementId: string) => {
+    setSelectedElement(elementId);
+    const element = currentSlide.elements.find(el => el.id === elementId);
+    if (element?.type === 'text') {
+      setShowTextToolbar(true);
+      // Start editing text
+      const newSlides = slides.map((slide, index) => {
+        if (index === currentSlideIndex) {
+          return {
+            ...slide,
+            elements: slide.elements.map(el => 
+              el.id === elementId 
+                ? { ...el, isEditing: true }
+                : el
+            )
+          };
+        }
+        return slide;
+      });
+      setSlides(newSlides);
+    } else {
+      setShowTextToolbar(false);
+    }
+  };
+
+  // Handle text editing with auto-resize
+  const handleTextEdit = (elementId: string, newContent: string) => {
+    const element = currentSlide.elements.find(el => el.id === elementId);
+    if (!element) return;
+
+    // Create a temporary div to measure text dimensions
+    const tempDiv = document.createElement('div');
+    tempDiv.style.position = 'absolute';
+    tempDiv.style.visibility = 'hidden';
+    tempDiv.style.whiteSpace = 'pre-wrap';
+    tempDiv.style.wordWrap = 'break-word';
+    tempDiv.style.fontSize = `${element.style?.fontSize || 16}px`;
+    tempDiv.style.fontFamily = element.style?.fontFamily || 'Arial';
+    tempDiv.style.fontWeight = element.style?.fontWeight || 'normal';
+    tempDiv.style.fontStyle = element.style?.fontStyle || 'normal';
+    tempDiv.style.textDecoration = element.style?.textDecoration || 'none';
+    tempDiv.style.width = `${element.width}px`;
+    tempDiv.style.padding = '8px';
+    tempDiv.style.boxSizing = 'border-box';
+    tempDiv.textContent = newContent;
+    
+    document.body.appendChild(tempDiv);
+    
+    // Calculate required height
+    const requiredHeight = Math.max(30, tempDiv.scrollHeight);
+    document.body.removeChild(tempDiv);
+
+    const newSlides = slides.map((slide, index) => {
+      if (index === currentSlideIndex) {
+        return {
+          ...slide,
+          elements: slide.elements.map(el => 
+            el.id === elementId 
+              ? { 
+                  ...el, 
+                  content: newContent,
+                  height: requiredHeight
+                }
+              : el
+          )
+        };
+      }
+      return slide;
+    });
+    setSlides(newSlides);
+  };
+
+  // Handle text edit end
+  const handleTextEditEnd = (elementId: string) => {
+    const newSlides = slides.map((slide, index) => {
+      if (index === currentSlideIndex) {
+        return {
+          ...slide,
+          elements: slide.elements.map(element => 
+            element.id === elementId 
+              ? { ...element, isEditing: false }
+              : element
+          )
+        };
+      }
+      return slide;
+    });
+    setSlides(newSlides);
+    saveToHistory(newSlides);
+    // Keep text toolbar visible even after editing ends
+  };
+
+  // Handle text formatting
+  const updateTextStyle = (property: string, value: any) => {
+    if (!selectedElement) return;
+    
+    const newSlides = slides.map((slide, index) => {
+      if (index === currentSlideIndex) {
+        return {
+          ...slide,
+          elements: slide.elements.map(element => 
+            element.id === selectedElement 
+              ? { 
+                  ...element, 
+                  style: { 
+                    ...element.style, 
+                    [property]: value 
+                  } 
+                }
+              : element
+          )
+        };
+      }
+      return slide;
+    });
+    setSlides(newSlides);
+    saveToHistory(newSlides);
+    
+    // Restore selection after style update
+    setTimeout(() => {
+      const textareas = document.querySelectorAll('textarea');
+      const activeTextarea = Array.from(textareas).find(ta => 
+        ta === document.activeElement || ta.parentElement?.contains(document.activeElement)
+      ) as HTMLTextAreaElement;
+      
+      if (activeTextarea && savedSelection) {
+        activeTextarea.focus();
+        activeTextarea.setSelectionRange(savedSelection.start, savedSelection.end);
+      }
+    }, 50);
+  };
+
+  // Get current text element
+  const getCurrentTextElement = () => {
+    return currentSlide.elements.find(el => el.id === selectedElement);
+  };
+
+  // Handle resize start
+  const handleResizeStart = (e: React.MouseEvent, elementId: string, handle: string) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsResizing(true);
+    setResizeHandle(handle);
+    setSelectedElement(elementId);
+    
+    const canvasRect = canvasRef.current?.getBoundingClientRect();
+    const element = currentSlide.elements.find(el => el.id === elementId);
+    
+    if (element && canvasRect) {
+      // Calculate offset based on the resize handle position
+      let offsetX = 0;
+      let offsetY = 0;
+      
+      switch (handle) {
+        case 'se': // Southeast - offset from element's right-bottom corner
+          offsetX = e.clientX - canvasRect.left - (element.x + element.width);
+          offsetY = e.clientY - canvasRect.top - (element.y + element.height);
+          break;
+        case 'sw': // Southwest - offset from element's left-bottom corner
+          offsetX = e.clientX - canvasRect.left - element.x;
+          offsetY = e.clientY - canvasRect.top - (element.y + element.height);
+          break;
+        case 'ne': // Northeast - offset from element's right-top corner
+          offsetX = e.clientX - canvasRect.left - (element.x + element.width);
+          offsetY = e.clientY - canvasRect.top - element.y;
+          break;
+        case 'nw': // Northwest - offset from element's left-top corner
+          offsetX = e.clientX - canvasRect.left - element.x;
+          offsetY = e.clientY - canvasRect.top - element.y;
+          break;
+        case 'e': // East - offset from element's right side
+          offsetX = e.clientX - canvasRect.left - (element.x + element.width);
+          offsetY = e.clientY - canvasRect.top - element.y;
+          break;
+        case 'w': // West - offset from element's left side
+          offsetX = e.clientX - canvasRect.left - element.x;
+          offsetY = e.clientY - canvasRect.top - element.y;
+          break;
+      }
+      
+      setDragOffset({
+        x: offsetX,
+        y: offsetY
+      });
+    }
+  };
+
+  // Handle resize with throttling for smooth performance
+  const handleResize = useCallback((e: MouseEvent) => {
+    if (!isResizing || !selectedElement || !resizeHandle) return;
+    
+    // Throttle resize updates for smooth performance
+    requestAnimationFrame(() => {
+    
+    const canvasRect = canvasRef.current?.getBoundingClientRect();
+    if (!canvasRect) return;
+    
+    const element = currentSlide.elements.find(el => el.id === selectedElement);
+    if (!element) return;
+    
+    let newWidth = element.width;
+    let newHeight = element.height;
+    let newElementX = element.x;
+    let newElementY = element.y;
+    
+    // Calculate new dimensions based on resize handle
+    switch (resizeHandle) {
+      case 'se': // Southeast - resize from right-bottom corner
+        newWidth = Math.max(50, e.clientX - canvasRect.left - element.x - dragOffset.x);
+        newHeight = Math.max(30, e.clientY - canvasRect.top - element.y - dragOffset.y);
+        break;
+      case 'sw': // Southwest - resize from left-bottom corner
+        newWidth = Math.max(50, (element.x + element.width) - (e.clientX - canvasRect.left - dragOffset.x));
+        newHeight = Math.max(30, e.clientY - canvasRect.top - element.y - dragOffset.y);
+        newElementX = Math.min(e.clientX - canvasRect.left - dragOffset.x, element.x + element.width - 50);
+        break;
+      case 'ne': // Northeast - resize from right-top corner
+        newWidth = Math.max(50, e.clientX - canvasRect.left - element.x - dragOffset.x);
+        newHeight = Math.max(30, (element.y + element.height) - (e.clientY - canvasRect.top - dragOffset.y));
+        newElementY = Math.min(e.clientY - canvasRect.top - dragOffset.y, element.y + element.height - 30);
+        break;
+      case 'nw': // Northwest - resize from left-top corner
+        newWidth = Math.max(50, (element.x + element.width) - (e.clientX - canvasRect.left - dragOffset.x));
+        newHeight = Math.max(30, (element.y + element.height) - (e.clientY - canvasRect.top - dragOffset.y));
+        newElementX = Math.min(e.clientX - canvasRect.left - dragOffset.x, element.x + element.width - 50);
+        newElementY = Math.min(e.clientY - canvasRect.top - dragOffset.y, element.y + element.height - 30);
+        break;
+      case 'e': // East - resize from right side
+        newWidth = Math.max(50, e.clientX - canvasRect.left - element.x - dragOffset.x);
+        break;
+      case 'w': // West - resize from left side
+        newWidth = Math.max(50, (element.x + element.width) - (e.clientX - canvasRect.left - dragOffset.x));
+        newElementX = Math.min(e.clientX - canvasRect.left - dragOffset.x, element.x + element.width - 50);
+        break;
+    }
+    
+    // Calculate font size and height for text elements
+    let newFontSize = element.style?.fontSize || 16;
+    if (element.type === 'text') {
+      const isCornerHandle = ['se', 'sw', 'ne', 'nw'].includes(resizeHandle);
+      const isSideHandle = ['e', 'w'].includes(resizeHandle);
+      
+      if (isCornerHandle) {
+        // For corner handles: scale font size based on width ratio
+        const currentWidth = element.width;
+        const widthRatio = newWidth / currentWidth;
+        const currentFontSize = element.style?.fontSize || 16;
+        // Gentle zoom - optimized sensitivity boost for smooth control
+        newFontSize = currentFontSize * (widthRatio * 1.009);
+      }
+      // For side handles (e, w): keep original font size
+      
+      // Calculate height based on content, width, and font size
+      if (element.content && element.content.trim()) {
+        const tempDiv = document.createElement('div');
+        tempDiv.style.position = 'absolute';
+        tempDiv.style.visibility = 'hidden';
+        tempDiv.style.whiteSpace = 'pre-wrap';
+        tempDiv.style.wordWrap = 'break-word';
+        tempDiv.style.fontSize = `${newFontSize}px`;
+        tempDiv.style.fontFamily = element.style?.fontFamily || 'Arial';
+        tempDiv.style.fontWeight = element.style?.fontWeight || 'normal';
+        tempDiv.style.fontStyle = element.style?.fontStyle || 'normal';
+        tempDiv.style.textDecoration = element.style?.textDecoration || 'none';
+        tempDiv.style.textAlign = element.style?.textAlign || 'left';
+        tempDiv.style.width = `${newWidth}px`;
+        tempDiv.style.padding = '8px';
+        tempDiv.style.boxSizing = 'border-box';
+        tempDiv.style.lineHeight = '1.2';
+        tempDiv.textContent = element.content;
+        
+        document.body.appendChild(tempDiv);
+        const measuredHeight = tempDiv.scrollHeight;
+        document.body.removeChild(tempDiv);
+        
+        // For corner handles: use measured height (zoom behavior)
+        // For side handles: use measured height (text wrap behavior)
+        if (isCornerHandle || isSideHandle) {
+          newHeight = Math.max(measuredHeight, 30);
+        }
+      } else {
+        // If no content, use minimum height
+        newHeight = Math.max(newHeight, 30);
+      }
+    }
+    
+    setDragPreview({
+      x: newElementX,
+      y: newElementY
+    });
+    
+    // Update element with new dimensions and font size (for corner handles)
+    const newSlides = slides.map((slide, index) => {
+      if (index === currentSlideIndex) {
+        return {
+          ...slide,
+          elements: slide.elements.map(el => 
+            el.id === selectedElement 
+              ? { 
+                  ...el, 
+                  x: newElementX,
+                  y: newElementY,
+                  width: newWidth,
+                  height: newHeight,
+                  style: {
+                    ...el.style,
+                    fontSize: element.type === 'text' ? newFontSize : el.style?.fontSize
+                  }
+                }
+              : el
+          )
+        };
+      }
+      return slide;
+    });
+    setSlides(newSlides);
+    
+    }); // End requestAnimationFrame
+  }, [isResizing, selectedElement, resizeHandle, dragOffset, currentSlide.elements, slides, currentSlideIndex]);
+
+  // Handle delete element
+  const handleDeleteElement = (elementId: string) => {
+    const newSlides = slides.map((slide, index) => {
+      if (index === currentSlideIndex) {
+        return {
+          ...slide,
+          elements: slide.elements.filter(el => el.id !== elementId)
+        };
+      }
+      return slide;
+    });
+
+    setSlides(newSlides);
+    setSelectedElement(null);
+    saveToHistory(newSlides);
+  };
+
+  // Handle canvas click
+  const handleCanvasClick = (e: React.MouseEvent) => {
+    if (e.target === canvasRef.current) {
+      setSelectedElement(null);
+      setShowTextToolbar(false);
+    }
+  };
+
+  // Handle drag start (always enabled, no tool required)
+  const handleMouseDown = (e: React.MouseEvent, elementId: string) => {
+    // Don't start drag if editing text
+    const element = currentSlide.elements.find(el => el.id === elementId);
+    if (element?.isEditing) return;
+    
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(true);
+    setSelectedElement(elementId);
+    
+    const canvasRect = canvasRef.current?.getBoundingClientRect();
+    
+    if (element && canvasRect) {
+      setDragOffset({
+        x: e.clientX - canvasRect.left - element.x,
+        y: e.clientY - canvasRect.top - element.y
+      });
+    }
+  };
+
+  // Handle drag with throttling for better performance
+  const handleMouseMove = useCallback((e: MouseEvent) => {
+    if (!isDragging || !selectedElement) return;
+
+    // Use requestAnimationFrame for smooth updates
+    requestAnimationFrame(() => {
+      const canvasRect = canvasRef.current?.getBoundingClientRect();
+      if (!canvasRect) return;
+
+      const newX = e.clientX - canvasRect.left - dragOffset.x;
+      const newY = e.clientY - canvasRect.top - dragOffset.y;
+
+      // Constrain to canvas bounds
+      const element = currentSlide.elements.find(el => el.id === selectedElement);
+      const elementWidth = element?.width || 100;
+      const elementHeight = element?.height || 50;
+      
+      const constrainedX = Math.max(0, Math.min(newX, 800 - elementWidth));
+      const constrainedY = Math.max(0, Math.min(newY, 600 - elementHeight));
+
+      // Update preview position for smooth dragging
+      setDragPreview({ x: constrainedX, y: constrainedY });
+    });
+  }, [isDragging, selectedElement, dragOffset, currentSlide.elements]);
+
+  // Handle drag end
+  const handleMouseUp = useCallback(() => {
+    if (isDragging && selectedElement && dragPreview) {
+      // Apply the final position to the actual element
+      const newSlides = slides.map((slide, index) => {
+        if (index === currentSlideIndex) {
+          return {
+            ...slide,
+            elements: slide.elements.map(element => 
+              element.id === selectedElement 
+                ? { ...element, x: dragPreview.x, y: dragPreview.y }
+                : element
+            )
+          };
+        }
+        return slide;
+      });
+
+      setSlides(newSlides);
+      setIsDragging(false);
+      setDragPreview(null);
+      saveToHistory(newSlides);
+    }
+  }, [isDragging, selectedElement, dragPreview, slides, currentSlideIndex, saveToHistory]);
+
+  // Add mouse event listeners
+  useEffect(() => {
+    if (isDragging) {
+      document.addEventListener('mousemove', handleMouseMove);
+      document.addEventListener('mouseup', handleMouseUp);
+      return () => {
+        document.removeEventListener('mousemove', handleMouseMove);
+        document.removeEventListener('mouseup', handleMouseUp);
+      };
+    }
+  }, [isDragging, handleMouseMove, handleMouseUp]);
+
+  // Mouse event listeners for resize
+  useEffect(() => {
+    if (isResizing) {
+      const handleMouseMove = (e: MouseEvent) => handleResize(e);
+      const handleMouseUp = () => {
+        setIsResizing(false);
+        setResizeHandle(null);
+        setDragPreview(null);
+        saveToHistory(slides);
+      };
+
+      document.addEventListener('mousemove', handleMouseMove);
+      document.addEventListener('mouseup', handleMouseUp);
+
+      return () => {
+        document.removeEventListener('mousemove', handleMouseMove);
+        document.removeEventListener('mouseup', handleMouseUp);
+      };
+    }
+  }, [isResizing, handleResize, slides]);
+
+  // Add keyboard shortcuts
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Don't handle shortcuts when save dialog is open
+      if (showSaveDialog) {
+        return;
+      }
+      
+      if (e.key === 'Delete' && selectedElement) {
+        // Delete selected element
+        setSlides(prevSlides => {
+          const newSlides = prevSlides.map((slide, index) => {
+            if (index === currentSlideIndex) {
+              return {
+                ...slide,
+                elements: slide.elements.filter(el => el.id !== selectedElement)
+              };
+            }
+            return slide;
+          });
+          saveToHistory(newSlides);
+          return newSlides;
+        });
+        setSelectedElement(null);
+      } else if (e.key === 'Escape') {
+        setContextMenu(null);
+      } else if (e.ctrlKey || e.metaKey) {
+        if (e.key === 'c' && !selectedElement) {
+          // Copy current slide
+          e.preventDefault();
+          setCopiedSlide(slides[currentSlideIndex]);
+        } else if (e.key === 'v' && copiedSlide && !selectedElement) {
+          // Paste slide after current
+          e.preventDefault();
+          const newSlide = {
+            ...copiedSlide,
+            id: `slide-${Date.now()}`,
+            elements: copiedSlide.elements.map(el => ({
+              ...el,
+              id: `element-${Date.now()}-${Math.random()}`
+            }))
+          };
+          const newSlides = [...slides];
+          newSlides.splice(currentSlideIndex + 1, 0, newSlide);
+          setSlides(newSlides);
+          saveToHistory(newSlides);
+          setCurrentSlideIndex(currentSlideIndex + 1);
+        } else if (e.key === 'd' && !selectedElement) {
+          // Duplicate current slide
+          e.preventDefault();
+          const currentSlide = slides[currentSlideIndex];
+          const duplicatedSlide = {
+            ...currentSlide,
+            id: `slide-${Date.now()}`,
+            elements: currentSlide.elements.map(el => ({
+              ...el,
+              id: `element-${Date.now()}-${Math.random()}`
+            }))
+          };
+          const newSlides = [...slides];
+          newSlides.splice(currentSlideIndex + 1, 0, duplicatedSlide);
+          setSlides(newSlides);
+          saveToHistory(newSlides);
+          setCurrentSlideIndex(currentSlideIndex + 1);
+        }
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [selectedElement, currentSlideIndex, contextMenu, copiedSlide, showSaveDialog, slides, saveToHistory]);
+
+  // Close context menu when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (contextMenu && !(e.target as Element).closest('.context-menu')) {
+        setContextMenu(null);
+      }
+    };
+
+    if (contextMenu) {
+      document.addEventListener('click', handleClickOutside);
+      return () => {
+        document.removeEventListener('click', handleClickOutside);
+      };
+    }
+  }, [contextMenu]);
+
+  // Handle global mouse events for slide dragging
+  useEffect(() => {
+    const handleGlobalMouseUp = () => {
+      if (isDraggingSlide) {
+        setIsDraggingSlide(false);
+        setDragSlideIndex(null);
+        document.body.style.cursor = '';
+        
+        // Remove all ring classes
+        document.querySelectorAll('[data-slide-index]').forEach(el => {
+          el.classList.remove('ring-2', 'ring-blue-400');
+        });
+      }
+    };
+
+    if (isDraggingSlide) {
+      document.addEventListener('mouseup', handleGlobalMouseUp);
+      return () => {
+        document.removeEventListener('mouseup', handleGlobalMouseUp);
+      };
+    }
+  }, [isDraggingSlide]);
+
+  // Add new slide
+  const addSlide = () => {
+    const newSlide: Slide = {
+      id: `slide-${Date.now()}`,
+      elements: [],
+      backgroundColor: '#ffffff'
+    };
+    const newSlides = [...slides, newSlide];
+    setSlides(newSlides);
+    setCurrentSlideIndex(newSlides.length - 1);
+    saveToHistory(newSlides);
+  };
+
+  const duplicateSlide = (slideIndex: number) => {
+    const slideToDuplicate = slides[slideIndex];
+    const duplicatedSlide: Slide = {
+      ...slideToDuplicate,
+      id: `slide-${Date.now()}`,
+      elements: slideToDuplicate.elements.map(element => ({
+        ...element,
+        id: `element-${Date.now()}-${Math.random()}`
+      }))
+    };
+    const newSlides = [...slides];
+    newSlides.splice(slideIndex + 1, 0, duplicatedSlide);
+    setSlides(newSlides);
+    setCurrentSlideIndex(slideIndex + 1);
+    saveToHistory(newSlides);
+    setContextMenu(null);
+  };
+
+  const deleteSlide = (slideIndex: number) => {
+    console.log('deleteSlide called with index:', slideIndex, 'showSaveDialog:', showSaveDialog);
+    if (slides.length <= 1) {
+      alert('Cannot delete the last slide');
+      return;
+    }
+    const newSlides = slides.filter((_, index) => index !== slideIndex);
+    setSlides(newSlides);
+    if (currentSlideIndex >= newSlides.length) {
+      setCurrentSlideIndex(newSlides.length - 1);
+    } else if (currentSlideIndex > slideIndex) {
+      setCurrentSlideIndex(currentSlideIndex - 1);
+    }
+    saveToHistory(newSlides);
+    setContextMenu(null);
+  };
+
+  const handleSlideRightClick = (e: React.MouseEvent, slideIndex: number) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    // Position context menu above the slide thumbnail
+    const rect = e.currentTarget.getBoundingClientRect();
+    const contextMenuHeight = 200; // Approximate height of context menu
+    
+    let y = rect.top - contextMenuHeight - 10; // Position above by default
+    
+    // If not enough space above, position below
+    if (y < 10) {
+      y = rect.bottom + 10;
+    }
+    
+    // Ensure it doesn't go off screen horizontally
+    let x = e.clientX;
+    const contextMenuWidth = 200; // Approximate width of context menu
+    if (x + contextMenuWidth > window.innerWidth) {
+      x = window.innerWidth - contextMenuWidth - 10;
+    }
+    
+    setContextMenu({
+      x,
+      y,
+      slideIndex
+    });
+  };
+
+  const handleSlideClick = (slideIndex: number) => {
+    setCurrentSlideIndex(slideIndex);
+    setContextMenu(null);
+  };
+
+  const copySlide = (slideIndex: number) => {
+    const slideToCopy = slides[slideIndex];
+    setCopiedSlide(slideToCopy);
+    setContextMenu(null);
+  };
+
+  const pasteSlide = (slideIndex: number) => {
+    if (!copiedSlide) return;
+    
+    const pastedSlide: Slide = {
+      ...copiedSlide,
+      id: `slide-${Date.now()}`,
+      elements: copiedSlide.elements.map(element => ({
+        ...element,
+        id: `element-${Date.now()}-${Math.random()}`
+      }))
+    };
+    
+    const newSlides = [...slides];
+    newSlides.splice(slideIndex + 1, 0, pastedSlide);
+    setSlides(newSlides);
+    setCurrentSlideIndex(slideIndex + 1);
+    saveToHistory(newSlides);
+    setContextMenu(null);
+  };
+
+  const handleSlideMouseDown = (e: React.MouseEvent, slideIndex: number) => {
+    // Only start drag if it's not a right click
+    if (e.button !== 0) return;
+    
+    e.preventDefault();
+    setIsDraggingSlide(true);
+    setDragSlideIndex(slideIndex);
+    
+    // Add drag cursor
+    document.body.style.cursor = 'grabbing';
+  };
+
+  const handleSlideMouseUp = (e: React.MouseEvent, slideIndex: number) => {
+    if (!isDraggingSlide || dragSlideIndex === null) return;
+    
+    e.preventDefault();
+    e.stopPropagation();
+    
+    // Reset drag state
+    setIsDraggingSlide(false);
+    setDragSlideIndex(null);
+    document.body.style.cursor = '';
+    
+    // If dropped on different slide, reorder
+    if (dragSlideIndex !== slideIndex) {
+      const newSlides = [...slides];
+      const draggedSlide = newSlides[dragSlideIndex];
+      
+      // Remove from original position
+      newSlides.splice(dragSlideIndex, 1);
+      
+      // Insert at new position
+      const insertIndex = slideIndex > dragSlideIndex ? slideIndex - 1 : slideIndex;
+      newSlides.splice(insertIndex, 0, draggedSlide);
+      
+      setSlides(newSlides);
+      setCurrentSlideIndex(insertIndex);
+      saveToHistory(newSlides);
+    }
+  };
+
+  const handleSlideMouseEnter = (slideIndex: number) => {
+    if (isDraggingSlide && dragSlideIndex !== null && dragSlideIndex !== slideIndex) {
+      // Add visual feedback for drop target
+      const slideElement = document.querySelector(`[data-slide-index="${slideIndex}"]`);
+      if (slideElement) {
+        slideElement.classList.add('ring-2', 'ring-blue-400');
+      }
+    }
+  };
+
+  const handleSlideMouseLeave = (slideIndex: number) => {
+    const slideElement = document.querySelector(`[data-slide-index="${slideIndex}"]`);
+    if (slideElement) {
+      slideElement.classList.remove('ring-2', 'ring-blue-400');
+    }
+  };
 
 
-// --- 1. TẤT CẢ CÁC COMPONENT CON ĐƯỢC ĐỊNH NGHĨA Ở ĐÂY ---
+  // Handle save slide
+  const exportToPowerPoint = () => {
+    if (slides.length === 0) {
+      alert('Please add at least one slide to export');
+      return;
+    }
 
-// --- TopToolbar ---
-interface TopToolbarProps { canUndo: boolean; onUndo: () => void; canRedo: boolean; onRedo: () => void; zoomLevel: number; onZoomIn: () => void; onZoomOut: () => void; onZoomReset: () => void; onExport: () => void; onSave: () => void; minZoom: number; maxZoom: number; }
-const TopToolbar: React.FC<TopToolbarProps> = ({ canUndo, onUndo, canRedo, onRedo, zoomLevel, onZoomIn, onZoomOut, onZoomReset, onExport, onSave, minZoom, maxZoom }) => (
-  <TooltipProvider delayDuration={200}>
-    {/* SỬA: Thêm 'sticky', 'top-12' (để nằm dưới NavBar), 'w-full' */}
-    <header className="flex items-center justify-between bg-white border-b border-gray-200 px-4 py-2 z-20 flex-shrink-0 h-14 sticky top-12 w-full">
-      <div className="flex items-center gap-4">
-        <h1 className="text-lg font-semibold text-gray-800">Slide Editor</h1>
-        <div className="flex items-center gap-1 border-l pl-3 ml-2">
-          <Tooltip><TooltipTrigger asChild><Button variant="ghost" size="icon" onClick={onUndo} disabled={!canUndo} aria-label="Undo"><Undo size={18} /></Button></TooltipTrigger><TooltipContent side="bottom">Undo (Ctrl+Z)</TooltipContent></Tooltip>
-          <Tooltip><TooltipTrigger asChild><Button variant="ghost" size="icon" onClick={onRedo} disabled={!canRedo} aria-label="Redo"><Redo size={18} /></Button></TooltipTrigger><TooltipContent side="bottom">Redo (Ctrl+Y)</TooltipContent></Tooltip>
-        </div>
-        <div className="flex items-center gap-1 border-l pl-3 ml-2">
-          <Tooltip><TooltipTrigger asChild><Button variant="ghost" size="icon" onClick={onZoomOut} disabled={zoomLevel <= minZoom} aria-label="Zoom Out"><ZoomOut size={18} /></Button></TooltipTrigger><TooltipContent side="bottom">Zoom Out (Ctrl+-)</TooltipContent></Tooltip>
-          <Tooltip><TooltipTrigger asChild><Button variant="ghost" className="w-16 text-sm" onClick={onZoomReset} disabled={zoomLevel === 1}>{(zoomLevel * 100).toFixed(0)}%</Button></TooltipTrigger><TooltipContent side="bottom">Reset Zoom (Ctrl+0)</TooltipContent></Tooltip>
-          <Tooltip><TooltipTrigger asChild><Button variant="ghost" size="icon" onClick={onZoomIn} disabled={zoomLevel >= maxZoom} aria-label="Zoom In"><ZoomIn size={18} /></Button></TooltipTrigger><TooltipContent side="bottom">Zoom In (Ctrl++)</TooltipContent></Tooltip>
-        </div>
-      </div>
-      <div className="flex items-center gap-2">
-        <Tooltip><TooltipTrigger asChild><Button variant="outline" size="sm" onClick={onExport}><FileDown size={16} className="mr-1.5"/> Export PPTX</Button></TooltipTrigger><TooltipContent side="bottom">Download as .pptx</TooltipContent></Tooltip>
-        <Tooltip><TooltipTrigger asChild><Button size="sm" onClick={onSave}><Save size={16} className="mr-1.5"/> Save</Button></TooltipTrigger><TooltipContent side="bottom">Save to Cloud (Ctrl+S)</TooltipContent></Tooltip>
-      </div>
-    </header>
-  </TooltipProvider>
-);
+    try {
+      // Create new presentation
+      const pptx = new PptxGenJS();
+      
+      // Set presentation properties
+      pptx.layout = 'LAYOUT_16x9'; // 16:9 aspect ratio
+      pptx.author = 'MathSlide Creator';
+      pptx.company = 'MathSlide Learning';
+      pptx.subject = slideTopic || 'Mathematics Presentation';
+      pptx.title = slideTitle || 'Untitled Presentation';
 
-// --- TextFormatToolbar ---
-interface TextFormatToolbarProps { element: SlideElement | undefined; onStyleChange: (property: keyof SlideElementStyle, value: any) => void; onListToggle: () => void; textAreaRef: React.RefObject<HTMLTextAreaElement | null>; }
-const TextFormatToolbar: React.FC<TextFormatToolbarProps> = ({ element, onStyleChange, onListToggle, textAreaRef }) => {
-  if (!element || element.type !== 'text') return null;
-  const [savedSelection, setSavedSelection] = React.useState<{ start: number, end: number } | null>(null);
-  const handleColorChange = (e: React.ChangeEvent<HTMLInputElement>) => { onStyleChange('color', e.target.value); setTimeout(() => { if(textAreaRef.current && savedSelection) { textAreaRef.current.focus(); textAreaRef.current.setSelectionRange(savedSelection.start, savedSelection.end); setSavedSelection(null); } }, 50); };
-  const handleColorMouseDown = () => { const el = textAreaRef.current; if (el) setSavedSelection({ start: el.selectionStart, end: el.selectionEnd }); };
+      // Add slides
+      slides.forEach((slide) => {
+        const pptxSlide = pptx.addSlide();
+        
+        // Set slide background
+        pptxSlide.background = { color: slide.backgroundColor || '#ffffff' };
+        
+        // Add elements to slide
+        slide.elements.forEach((element) => {
+          const elementProps: any = {
+            x: (element.x / 800) * 10, // Convert to inches (assuming 800px = 10 inches)
+            y: (element.y / 600) * 5.625, // Convert to inches (assuming 600px = 5.625 inches)
+            w: (element.width / 800) * 10,
+            h: (element.height / 600) * 5.625,
+          };
+
+          switch (element.type) {
+            case 'text':
+              pptxSlide.addText(element.content || 'Text', {
+                ...elementProps,
+                fontSize: parseInt(String(element.style?.fontSize)) || 16,
+                color: element.style?.color || '#000000',
+                bold: element.style?.fontWeight === 'bold',
+                italic: element.style?.fontStyle === 'italic',
+                underline: element.style?.textDecoration === 'underline',
+                align: element.style?.textAlign === 'center' ? 'center' : 
+                       element.style?.textAlign === 'right' ? 'right' : 'left',
+                fontFace: element.style?.fontFamily || 'Arial',
+              });
+              break;
+
+            case 'image':
+              if (element.content) {
+                pptxSlide.addImage({
+                  ...elementProps,
+                  data: element.content, // Base64 data URL
+                });
+              }
+              break;
+
+            case 'shape':
+              pptxSlide.addShape('rect', {
+                ...elementProps,
+                fill: { color: element.style?.backgroundColor || '#f3f4f6' },
+                line: { color: '#d1d5db', width: 1 },
+              });
+              break;
+
+            case 'table':
+              pptxSlide.addTable([
+                [{ text: 'Cell 1', options: { fontSize: 12 } }],
+                [{ text: 'Cell 2', options: { fontSize: 12 } }]
+              ], {
+                ...elementProps,
+                border: { type: 'solid', color: '#d1d5db', pt: 1 },
+                fill: { color: '#ffffff' },
+              });
+              break;
+
+            case 'graphic':
+              pptxSlide.addShape('rect', {
+                ...elementProps,
+                fill: { type: 'gradient', gradientStops: [
+                  { position: 0, color: '#3b82f6' },
+                  { position: 100, color: '#8b5cf6' }
+                ]},
+              });
+              break;
+          }
+        });
+      });
+
+      // Generate and download
+      const fileName = slideTitle 
+        ? `${slideTitle.replace(/[^a-zA-Z0-9]/g, '_')}.pptx`
+        : `MathPresentation_${new Date().toISOString().split('T')[0]}.pptx`;
+      
+      pptx.writeFile({ fileName });
+      
+      console.log(`PowerPoint exported: ${fileName} with ${slides.length} slides`);
+      
+    } catch (error) {
+      console.error('Error exporting PowerPoint:', error);
+      alert('Failed to export PowerPoint file. Please try again.');
+    }
+  };
+
+  const handleSavePresentation = async () => {
+    if (!slideTitle.trim()) {
+      alert('Please enter a presentation title');
+      return;
+    }
+
+    if (!slideTopic.trim()) {
+      alert('Please enter a presentation topic');
+      return;
+    }
+
+    if (slidePrice < 0) {
+      alert('Price must be non-negative');
+      return;
+    }
+
+    if (!slideGrade || slideGrade < 1 || slideGrade > 12) {
+      alert('Please enter a valid grade (1-12)');
+      return;
+    }
+
+    if (slides.length === 0) {
+      alert('Please add at least one slide to save');
+      return;
+    }
+
+    try {
+      // Prepare presentation data with all slides
+      const presentationData = {
+        title: slideTitle,
+        topic: slideTopic,
+        price: slidePrice,
+        grade: slideGrade,
+        isPublished: false,
+        slidePages: slides.map((slide, index) => ({
+          orderNumber: index + 1,
+          title: `Slide ${index + 1}`,
+          content: JSON.stringify({
+            elements: slide.elements.map(element => ({
+              ...element,
+              // Ensure all elements have proper styling
+              style: {
+                fontSize: element.style?.fontSize || 16,
+                fontFamily: element.style?.fontFamily || 'Arial',
+                color: element.style?.color || '#000000',
+                fontWeight: element.style?.fontWeight || 'normal',
+                fontStyle: element.style?.fontStyle || 'normal',
+                textDecoration: element.style?.textDecoration || 'none',
+                textAlign: element.style?.textAlign || 'left',
+                backgroundColor: element.style?.backgroundColor || 'transparent',
+                borderRadius: element.style?.borderRadius || '0px'
+              }
+            })),
+            backgroundColor: slide.backgroundColor || '#ffffff'
+          })
+        }))
+      };
+
+      console.log('Saving presentation with:', {
+        title: presentationData.title,
+        topic: presentationData.topic,
+        price: presentationData.price,
+        grade: presentationData.grade,
+        totalSlides: presentationData.slidePages.length,
+        totalElements: slides.reduce((sum, slide) => sum + slide.elements.length, 0)
+      });
+
+      // Generate a REAL PPTX from current slides using pptxgenjs (frontend)
+      const pptx = new PptxGenJS();
+      pptx.layout = 'LAYOUT_16x9';
+      pptx.author = 'MathSlide Creator';
+      pptx.company = 'MathSlide Learning';
+      pptx.subject = slideTopic || 'Mathematics Presentation';
+      pptx.title = slideTitle || 'Untitled Presentation';
+
+      slides.forEach((slide) => {
+        const pptxSlide = pptx.addSlide();
+        pptxSlide.background = { color: slide.backgroundColor || '#ffffff' };
+
+        slide.elements.forEach((element) => {
+          const elementProps: any = {
+            x: (element.x / 800) * 10,
+            y: (element.y / 600) * 5.625,
+            w: (element.width / 800) * 10,
+            h: (element.height / 600) * 5.625,
+          };
+
+          switch (element.type) {
+            case 'text':
+              pptxSlide.addText(element.content || 'Text', {
+                ...elementProps,
+                fontSize: parseInt(String(element.style?.fontSize)) || 16,
+                color: element.style?.color || '#000000',
+                bold: element.style?.fontWeight === 'bold',
+                italic: element.style?.fontStyle === 'italic',
+                underline: element.style?.textDecoration === 'underline',
+                align:
+                  element.style?.textAlign === 'center'
+                    ? 'center'
+                    : element.style?.textAlign === 'right'
+                      ? 'right'
+                      : 'left',
+                fontFace: element.style?.fontFamily || 'Arial',
+              });
+              break;
+            case 'image':
+              if (element.content) {
+                pptxSlide.addImage({
+                  ...elementProps,
+                  data: element.content,
+                });
+              }
+              break;
+            case 'shape':
+              pptxSlide.addShape('rect', {
+                ...elementProps,
+                fill: { color: element.style?.backgroundColor || '#f3f4f6' },
+                line: { color: '#d1d5db', width: 1 },
+              });
+              break;
+            case 'table':
+              pptxSlide.addTable(
+                [
+                  [{ text: 'Cell 1', options: { fontSize: 12 } }],
+                  [{ text: 'Cell 2', options: { fontSize: 12 } }],
+                ],
+                {
+                  ...elementProps,
+                  border: { type: 'solid', color: '#d1d5db', pt: 1 },
+                  fill: { color: '#ffffff' },
+                },
+              );
+              break;
+            case 'graphic':
+              pptxSlide.addShape('rect', {
+                ...elementProps,
+                fill: {
+                  type: 'gradient',
+                  gradientStops: [
+                    { position: 0, color: '#3b82f6' },
+                    { position: 100, color: '#8b5cf6' },
+                  ],
+                },
+              });
+              break;
+          }
+        });
+      });
+
+      const blob = (await (pptx as any).write({ outputType: 'blob' })) as Blob;
+      const realFile = new File([blob as BlobPart], `${slideTitle.replace(/[^a-zA-Z0-9]/g, '_')}.pptx`, {
+        type: 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+      });
+
+      await createSlideMutation.mutateAsync({
+        slideDto: presentationData,
+        file: realFile,
+      });
+
+      alert(`Presentation "${slideTitle}" saved successfully with ${slides.length} slides!`);
+      setShowSaveDialog(false);
+      // Reset form but keep slides
+      setSlideTitle('');
+      setSlideTopic('');
+      setSlidePrice(0);
+      setSlideGrade(undefined);
+    } catch (error) {
+      console.error('Failed to save presentation:', error);
+      alert('Failed to save presentation. Please try again.');
+    }
+  };
+
   return (
-    <TooltipProvider delayDuration={200}>
-      {/* SỬA: Thêm 'sticky', 'top-[calc(3rem+3.5rem)]' (dưới NavBar+TopToolbar), 'w-full' */}
-      <div className="bg-gray-50 border-b border-gray-200 px-4 py-1.5 flex items-center gap-3 z-10 flex-shrink-0 h-12 text-sm overflow-x-auto sticky top-[calc(3rem+3.5rem)] w-full">
-        <select value={element.style?.fontFamily || 'Arial'} onChange={(e) => onStyleChange('fontFamily', e.target.value)} className="w-[130px] h-8 text-xs px-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 bg-white" aria-label="Font family">
-          <option value="Arial">Arial</option><option value="Verdana">Verdana</option><option value="Times New Roman">Times New Roman</option><option value="Georgia">Georgia</option><option value="Courier New">Courier New</option>
-        </select>
-        <div className="flex items-center">
-          <Tooltip><TooltipTrigger asChild><Button variant="ghost" size="icon-sm" onClick={() => onStyleChange('fontSize', Math.max(8, (element.style?.fontSize || 16) - 1))}><Minus size={14}/></Button></TooltipTrigger><TooltipContent>Decrease Font Size</TooltipContent></Tooltip>
-          <Input type="number" value={Math.round(element.style?.fontSize || 16)} onChange={(e) => onStyleChange('fontSize', parseInt(e.target.value) || 16)} className="w-12 h-7 px-1 text-xs text-center focus:ring-1 focus:ring-blue-500" min="8" max="120" step="1" aria-label="Font size"/>
-          <Tooltip><TooltipTrigger asChild><Button variant="ghost" size="icon-sm" onClick={() => onStyleChange('fontSize', Math.min(120, (element.style?.fontSize || 16) + 1))}><Plus size={14}/></Button></TooltipTrigger><TooltipContent>Increase Font Size</TooltipContent></Tooltip>
+    <div className="h-screen flex flex-col bg-gray-50 select-none">
+      {/* Top Toolbar */}
+      <div className="flex items-center justify-between bg-white border-b border-gray-200 px-4 py-2 z-20">
+        <div className="flex items-center gap-4">
+          <h1 className="text-xl font-bold text-gray-900">Create Slide</h1>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={undo}
+              disabled={historyIndex === 0}
+              className="p-2 rounded hover:bg-gray-100 disabled:opacity-50"
+            >
+              <Undo size={20} />
+            </button>
+            <button
+              onClick={redo}
+              disabled={historyIndex === history.length - 1}
+              className="p-2 rounded hover:bg-gray-100 disabled:opacity-50"
+            >
+              <Redo size={20} />
+            </button>
+          </div>
         </div>
-        <Tooltip>
-          <TooltipTrigger asChild><Button variant="ghost" size="icon-sm" className="relative w-7 h-7"><input type="color" value={element.style?.color || '#000000'} onChange={handleColorChange} onMouseDown={handleColorMouseDown} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" aria-label="Font color" /><Palette size={16} /><div className="absolute bottom-1 left-1 right-1 h-1 rounded-sm border border-gray-300" style={{ backgroundColor: element.style?.color || '#000000' }} /></Button></TooltipTrigger>
-          <TooltipContent>Font Color</TooltipContent>
-        </Tooltip>
-        <div className="flex items-center gap-0.5 border-l pl-2 ml-1">
-          <Tooltip><TooltipTrigger asChild><Button variant="ghost" size="icon-sm" onClick={() => onStyleChange('fontWeight', element.style?.fontWeight === 'bold' ? 'normal' : 'bold')} data-active={element.style?.fontWeight === 'bold'} className="data-[active=true]:bg-blue-100 data-[active=true]:text-blue-700" aria-pressed={element.style?.fontWeight === 'bold'}><Bold size={16} /></Button></TooltipTrigger><TooltipContent>Bold (Ctrl+B)</TooltipContent></Tooltip>
-          <Tooltip><TooltipTrigger asChild><Button variant="ghost" size="icon-sm" onClick={() => onStyleChange('fontStyle', element.style?.fontStyle === 'italic' ? 'normal' : 'italic')} data-active={element.style?.fontStyle === 'italic'} className="data-[active=true]:bg-blue-100 data-[active=true]:text-blue-700" aria-pressed={element.style?.fontStyle === 'italic'}><Italic size={16} /></Button></TooltipTrigger><TooltipContent>Italic (Ctrl+I)</TooltipContent></Tooltip>
-           <Tooltip><TooltipTrigger asChild><Button variant="ghost" size="icon-sm" onClick={() => onStyleChange('textDecoration', element.style?.textDecoration === 'underline' ? 'none' : 'underline')} data-active={element.style?.textDecoration === 'underline'} className="data-[active=true]:bg-blue-100 data-[active=true]:text-blue-700" aria-pressed={element.style?.textDecoration === 'underline'}><Underline size={16} /></Button></TooltipTrigger><TooltipContent>Underline (Ctrl+U)</TooltipContent></Tooltip>
-        </div>
-        <div className="flex items-center gap-0.5 border-l pl-2 ml-1">
-          <Tooltip><TooltipTrigger asChild><Button variant="ghost" size="icon-sm" onClick={() => onStyleChange('textAlign', 'left')} data-active={!element.style?.textAlign || element.style?.textAlign === 'left'} className="data-[active=true]:bg-blue-100 data-[active=true]:text-blue-700" aria-pressed={!element.style?.textAlign || element.style?.textAlign === 'left'}><AlignLeft size={16} /></Button></TooltipTrigger><TooltipContent>Align Left</TooltipContent></Tooltip>
-          <Tooltip><TooltipTrigger asChild><Button variant="ghost" size="icon-sm" onClick={() => onStyleChange('textAlign', 'center')} data-active={element.style?.textAlign === 'center'} className="data-[active=true]:bg-blue-100 data-[active=true]:text-blue-700" aria-pressed={element.style?.textAlign === 'center'}><AlignCenter size={16} /></Button></TooltipTrigger><TooltipContent>Align Center</TooltipContent></Tooltip>
-           <Tooltip><TooltipTrigger asChild><Button variant="ghost" size="icon-sm" onClick={() => onStyleChange('textAlign', 'right')} data-active={element.style?.textAlign === 'right'} className="data-[active=true]:bg-blue-100 data-[active=true]:text-blue-700" aria-pressed={element.style?.textAlign === 'right'}><AlignRight size={16} /></Button></TooltipTrigger><TooltipContent>Align Right</TooltipContent></Tooltip>
-        </div>
-        <div className="flex items-center gap-0.5 border-l pl-2 ml-1">
-          <Tooltip>
-            <TooltipTrigger asChild><Button variant="ghost" size="icon-sm" onClick={onListToggle} data-active={element.content?.includes('• ')} className="data-[active=true]:bg-blue-100 data-[active=true]:text-blue-700" aria-pressed={element.content?.includes('• ')}><List size={16} /></Button></TooltipTrigger>
-            <TooltipContent>Bullet List</TooltipContent>
-          </Tooltip>
-        </div>
-      </div>
-    </TooltipProvider>
-  );
-};
 
-// --- Sidebar ---
-interface SidebarProps { activeTab: SidebarTab; setActiveTab: (tab: SidebarTab) => void; isOpen: boolean; setIsOpen: (isOpen: boolean) => void; onAddElement: (type: SlideElement['type']) => void; onFileUpload: (files: FileList | null) => void; stickyTop: string; } // SỬA: Thêm stickyTop
-const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, isOpen, setIsOpen, onAddElement, onFileUpload, stickyTop }) => {
-  const handleDrop = (e: React.DragEvent<HTMLLabelElement>) => { e.preventDefault(); setActiveTab('uploads'); setIsOpen(true); onFileUpload(e.dataTransfer.files); };
-  const handleDragOver = (e: React.DragEvent<HTMLLabelElement>) => { e.preventDefault(); };
-  return (
-    <TooltipProvider delayDuration={200}>
-      {/* SỬA: Thêm 'sticky' và 'top', tính toán 'h' */}
-      <div 
-        className={cn("flex flex-shrink-0 bg-white border-r border-gray-200 sticky", stickyTop)}
-        style={{ height: `calc(100vh - ${stickyTop})` }} // Chiều cao = 100vh - chiều cao của mọi thứ bên trên
-      >
-        {/* Icon Bar */}
-        <div className="w-16 bg-gray-800 text-gray-400 flex flex-col items-center py-2 flex-shrink-0 z-10 relative">
-          <Tooltip><TooltipTrigger asChild><Button variant="ghost" size="icon" onClick={() => setActiveTab('elements')} className={cn("w-12 h-12 text-gray-400 hover:text-white hover:bg-gray-700", {'bg-gray-600 text-white': activeTab === 'elements'})}><Shapes size={20} /></Button></TooltipTrigger><TooltipContent side="right">Elements</TooltipContent></Tooltip>
-          <Tooltip><TooltipTrigger asChild><Button variant="ghost" size="icon" onClick={() => setActiveTab('text')} className={cn("w-12 h-12 text-gray-400 hover:text-white hover:bg-gray-700", {'bg-gray-600 text-white': activeTab === 'text'})}><Type size={20} /></Button></TooltipTrigger><TooltipContent side="right">Text</TooltipContent></Tooltip>
-          <Tooltip><TooltipTrigger asChild><Button variant="ghost" size="icon" onClick={() => setActiveTab('uploads')} className={cn("w-12 h-12 text-gray-400 hover:text-white hover:bg-gray-700", {'bg-gray-600 text-white': activeTab === 'uploads'})}><Upload size={20} /></Button></TooltipTrigger><TooltipContent side="right">Uploads</TooltipContent></Tooltip>
-          
-          {/* SỬA LỖI 2: Nút thu gọn nằm BÊN NGOÀI Icon Bar nhưng BÊN TRONG div cha 'sticky' */}
-          <Button
-            variant="outline" size="icon" onClick={() => setIsOpen(!isOpen)}
-            className={cn(
-                "absolute top-1/2 -translate-y-1/2 z-20 w-6 h-10 rounded-r-md rounded-l-none border-l-0 shadow hover:bg-gray-50",
-                "transition-all duration-300 ease-in-out",
-                // Định vị nó dựa trên `isOpen`
-                isOpen ? "left-[calc(16rem+4rem-0.75rem)]" : "left-[4rem-0.75rem]" 
-            )}
-            title={isOpen ? "Collapse Sidebar" : "Expand Sidebar"}
+        <div className="flex items-center gap-2">
+          <button 
+            onClick={exportToPowerPoint}
+            className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
           >
-            <ChevronLeft size={16} className={cn("transition-transform", { "rotate-180": !isOpen })} />
-          </Button>
+            <FileDown size={16} />
+            Export PPTX
+          </button>
+          <button 
+            onClick={() => setShowSaveDialog(true)}
+            className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
+          >
+            <Save size={16} />
+            Save to Cloud
+          </button>
+        </div>
+      </div>
+
+      {/* Text Formatting Toolbar */}
+      {showTextToolbar && selectedElement && (
+        <div className="bg-white border-b border-gray-200 px-4 py-2 flex items-center gap-4 z-19">
+          {/* Font Family */}
+          <select
+            value={getCurrentTextElement()?.style?.fontFamily || 'Arial'}
+            onChange={(e) => updateTextStyle('fontFamily', e.target.value)}
+            className="px-2 py-1 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+          >
+            <option value="Arial">Arial</option>
+            <option value="Helvetica">Helvetica</option>
+            <option value="Times New Roman">Times New Roman</option>
+            <option value="Georgia">Georgia</option>
+            <option value="Verdana">Verdana</option>
+            <option value="Courier New">Courier New</option>
+          </select>
+
+          {/* Font Size */}
+          <div className="flex items-center gap-1">
+            <button
+              onClick={() => updateTextStyle('fontSize', Math.max(4, (getCurrentTextElement()?.style?.fontSize || 16) - 2))}
+              className="p-1 rounded hover:bg-gray-100"
+            >
+              <Minus size={14} />
+            </button>
+            <input
+              type="number"
+              value={Math.round(getCurrentTextElement()?.style?.fontSize || 16)}
+              onChange={(e) => updateTextStyle('fontSize', parseInt(e.target.value) || 16)}
+              className="w-12 px-2 py-1 border border-gray-300 rounded text-sm text-center focus:outline-none focus:ring-2 focus:ring-blue-500"
+              min="4"
+              step="0.5"
+            />
+            <button
+              onClick={() => updateTextStyle('fontSize', (getCurrentTextElement()?.style?.fontSize || 16) + 2)}
+              className="p-1 rounded hover:bg-gray-100"
+            >
+              <Plus size={14} />
+            </button>
+          </div>
+
+          {/* Font Color */}
+          <div className="flex items-center gap-1">
+            <div className="relative">
+              <input
+                type="color"
+                value={getCurrentTextElement()?.style?.color || '#000000'}
+                onChange={(e) => updateTextStyle('color', e.target.value)}
+                onMouseDown={() => {
+                  // Save current selection before opening color picker
+                  const activeElement = document.activeElement as HTMLTextAreaElement;
+                  if (activeElement && activeElement.tagName === 'TEXTAREA') {
+                    setSavedSelection({
+                      start: activeElement.selectionStart || 0,
+                      end: activeElement.selectionEnd || 0
+                    });
+                    console.log('Saved selection:', activeElement.selectionStart, activeElement.selectionEnd);
+                  }
+                }}
+                onBlur={() => {
+                  // Restore focus to textarea when color picker closes
+                  setTimeout(() => {
+                    const textareas = document.querySelectorAll('textarea');
+                    const activeTextarea = Array.from(textareas).find(ta => 
+                      ta.getAttribute('data-element-id') === selectedElement
+                    ) as HTMLTextAreaElement;
+                    
+                    if (activeTextarea && savedSelection) {
+                      activeTextarea.focus();
+                      activeTextarea.setSelectionRange(savedSelection.start, savedSelection.end);
+                      console.log('Restored selection:', savedSelection.start, savedSelection.end);
+                    }
+                  }, 100);
+                }}
+                className="w-8 h-8 border border-gray-300 rounded cursor-pointer"
+                title="Font Color"
+              />
+            </div>
+            <Palette size={16} className="text-gray-500" />
+          </div>
+
+          {/* Text Styling */}
+          <div className="flex items-center gap-1 border-l border-gray-300 pl-4">
+            <button
+              onClick={() => updateTextStyle('fontWeight', getCurrentTextElement()?.style?.fontWeight === 'bold' ? 'normal' : 'bold')}
+              className={cn(
+                "p-2 rounded hover:bg-gray-100 transition-colors",
+                getCurrentTextElement()?.style?.fontWeight === 'bold' ? "bg-blue-100 text-blue-700" : ""
+              )}
+            >
+              <Bold size={16} />
+            </button>
+            <button
+              onClick={() => updateTextStyle('fontStyle', getCurrentTextElement()?.style?.fontStyle === 'italic' ? 'normal' : 'italic')}
+              className={cn(
+                "p-2 rounded hover:bg-gray-100 transition-colors",
+                getCurrentTextElement()?.style?.fontStyle === 'italic' ? "bg-blue-100 text-blue-700" : ""
+              )}
+            >
+              <Italic size={16} />
+            </button>
+            <button
+              onClick={() => updateTextStyle('textDecoration', getCurrentTextElement()?.style?.textDecoration === 'underline' ? 'none' : 'underline')}
+              className={cn(
+                "p-2 rounded hover:bg-gray-100 transition-colors",
+                getCurrentTextElement()?.style?.textDecoration === 'underline' ? "bg-blue-100 text-blue-700" : ""
+              )}
+            >
+              <Underline size={16} />
+            </button>
+          </div>
+
+          {/* Text Alignment */}
+          <div className="flex items-center gap-1 border-l border-gray-300 pl-4">
+            <button
+              onClick={() => updateTextStyle('textAlign', 'left')}
+              className={cn(
+                "p-2 rounded hover:bg-gray-100 transition-colors",
+                getCurrentTextElement()?.style?.textAlign === 'left' ? "bg-blue-100 text-blue-700" : ""
+              )}
+            >
+              <AlignLeft size={16} />
+            </button>
+            <button
+              onClick={() => updateTextStyle('textAlign', 'center')}
+              className={cn(
+                "p-2 rounded hover:bg-gray-100 transition-colors",
+                getCurrentTextElement()?.style?.textAlign === 'center' ? "bg-blue-100 text-blue-700" : ""
+              )}
+            >
+              <AlignCenter size={16} />
+            </button>
+            <button
+              onClick={() => updateTextStyle('textAlign', 'right')}
+              className={cn(
+                "p-2 rounded hover:bg-gray-100 transition-colors",
+                getCurrentTextElement()?.style?.textAlign === 'right' ? "bg-blue-100 text-blue-700" : ""
+              )}
+            >
+              <AlignRight size={16} />
+            </button>
+            <button
+              onClick={() => updateTextStyle('textAlign', 'justify')}
+              className={cn(
+                "p-2 rounded hover:bg-gray-100 transition-colors",
+                getCurrentTextElement()?.style?.textAlign === 'justify' ? "bg-blue-100 text-blue-700" : ""
+              )}
+            >
+              <AlignJustify size={16} />
+            </button>
+          </div>
+
+          {/* List */}
+          <div className="flex items-center gap-1 border-l border-gray-300 pl-4">
+            <button
+              onClick={() => {
+                const currentContent = getCurrentTextElement()?.content || '';
+                let newContent = '';
+                
+                if (currentContent.includes('•')) {
+                  // Remove bullet points
+                  newContent = currentContent.replace(/•\s*/g, '');
+                } else {
+                  // Add bullet points to each line
+                  const lines = currentContent.split('\n');
+                  newContent = lines.map(line => 
+                    line.trim() === '' ? line : `• ${line}`
+                  ).join('\n');
+                }
+                
+                // Update content directly
+                if (selectedElement) {
+                  const newSlides = slides.map((slide, index) => {
+                    if (index === currentSlideIndex) {
+                      return {
+                        ...slide,
+                        elements: slide.elements.map(element => 
+                          element.id === selectedElement 
+                            ? { ...element, content: newContent }
+                            : element
+                        )
+                      };
+                    }
+                    return slide;
+                  });
+                  setSlides(newSlides);
+                  saveToHistory(newSlides);
+                }
+              }}
+              className={cn(
+                "p-2 rounded hover:bg-gray-100 transition-colors",
+                getCurrentTextElement()?.content?.includes('•') ? "bg-blue-100 text-blue-700" : ""
+              )}
+            >
+              <List size={16} />
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Main Content Area */}
+      <div className="flex flex-1 overflow-hidden">
+        {/* Left Sidebar - Canva Style with Hover Expand */}
+        <div className="relative flex">
+          {/* Narrow Icon Bar */}
+          <div className="w-16 bg-white border-r border-gray-200 flex flex-col relative z-10">
+            {/* Navbar Items */}
+            <div className="flex flex-col">
+              <button
+                onClick={() => {
+                  if (activeTab === 'design' && isSidebarExpanded) {
+                    setIsSidebarExpanded(false);
+                  } else {
+                    setActiveTab('design');
+                    setIsSidebarExpanded(true);
+                  }
+                }}
+                onMouseEnter={() => {
+                  if (!isSidebarExpanded) {
+                    setHoveredTab('design');
+                  }
+                }}
+                onMouseLeave={() => setHoveredTab(null)}
+                className={cn(
+                  "p-4 flex flex-col items-center gap-1 text-xs font-medium transition-all duration-200",
+                  activeTab === 'design' ? "text-purple-600 bg-purple-50" : "text-gray-600 hover:text-gray-900 hover:bg-gray-50"
+                )}
+              >
+                <FileText size={20} />
+                <span>Design</span>
+              </button>
+              
+              <button
+                onClick={() => {
+                  if (activeTab === 'elements' && isSidebarExpanded) {
+                    setIsSidebarExpanded(false);
+                  } else {
+                    setActiveTab('elements');
+                    setIsSidebarExpanded(true);
+                  }
+                }}
+                onMouseEnter={() => {
+                  if (!isSidebarExpanded) {
+                    setHoveredTab('elements');
+                  }
+                }}
+                onMouseLeave={() => setHoveredTab(null)}
+                className={cn(
+                  "p-4 flex flex-col items-center gap-1 text-xs font-medium transition-all duration-200",
+                  activeTab === 'elements' ? "text-purple-600 bg-purple-50" : "text-gray-600 hover:text-gray-900 hover:bg-gray-50"
+                )}
+              >
+                <Shapes size={20} />
+                <span>Math</span>
+              </button>
+              
+              <button
+                onClick={() => {
+                  if (activeTab === 'text' && isSidebarExpanded) {
+                    setIsSidebarExpanded(false);
+                  } else {
+                    setActiveTab('text');
+                    setIsSidebarExpanded(true);
+                  }
+                }}
+                onMouseEnter={() => {
+                  if (!isSidebarExpanded) {
+                    setHoveredTab('text');
+                  }
+                }}
+                onMouseLeave={() => setHoveredTab(null)}
+                className={cn(
+                  "p-4 flex flex-col items-center gap-1 text-xs font-medium transition-all duration-200",
+                  activeTab === 'text' ? "text-purple-600 bg-purple-50" : "text-gray-600 hover:text-gray-900 hover:bg-gray-50"
+                )}
+              >
+                <Type size={20} />
+                <span>Text</span>
+              </button>
+              
+              <button
+                onClick={() => {
+                  if (activeTab === 'uploads' && isSidebarExpanded) {
+                    setIsSidebarExpanded(false);
+                  } else {
+                    setActiveTab('uploads');
+                    setIsSidebarExpanded(true);
+                  }
+                }}
+                onMouseEnter={() => {
+                  if (!isSidebarExpanded) {
+                    setHoveredTab('uploads');
+                  }
+                }}
+                onMouseLeave={() => setHoveredTab(null)}
+                className={cn(
+                  "p-4 flex flex-col items-center gap-1 text-xs font-medium transition-all duration-200",
+                  activeTab === 'uploads' ? "text-purple-600 bg-purple-50" : "text-gray-600 hover:text-gray-900 hover:bg-gray-50"
+                )}
+              >
+                <Upload size={20} />
+                <span>Uploads</span>
+              </button>
+              
+            </div>
+          </div>
+
+          {/* Expandable Content Panel */}
+          {((activeTab === 'design' && isSidebarExpanded) || hoveredTab === 'design') && (
+            <div className="w-80 bg-white border-r border-gray-200 shadow-lg transition-all duration-300 ease-in-out relative h-full flex flex-col">
+              {/* Collapse Button - Fixed position at right edge */}
+              {isSidebarExpanded && activeTab === 'design' && (
+                <button
+                  onClick={() => setIsSidebarExpanded(false)}
+                  className="absolute -right-3 top-1/2 transform -translate-y-1/2 w-6 h-6 bg-white border border-gray-200 hover:bg-gray-50 rounded-full flex items-center justify-center shadow-md transition-colors duration-200 z-10"
+                >
+                  <ChevronRight size={14} className="text-gray-600" />
+                </button>
+              )}
+              <div className="p-6 flex-1 overflow-y-auto">
+              {/* Search Bar */}
+              <div className="mb-6">
+                <div className="relative">
+                  <input
+                    type="text"
+                    placeholder="Use 4+ words to describe..."
+                    className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                  />
+                  <div className="absolute left-3 top-1/2 transform -translate-y-1/2 flex items-center gap-2">
+                    <div className="w-4 h-4 bg-gray-400 rounded-full"></div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Tabs */}
+              <div className="flex gap-1 mb-6">
+                <button className="px-4 py-2 text-sm font-medium text-purple-600 border-b-2 border-purple-600">Templates</button>
+                <button className="px-4 py-2 text-sm font-medium text-gray-500 hover:text-gray-700">Layouts</button>
+                <button className="px-4 py-2 text-sm font-medium text-gray-500 hover:text-gray-700">Styles</button>
+              </div>
+              
+              {/* Templates Grid */}
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-sm font-semibold text-gray-900">Premium Templates for You</h3>
+                  <button className="text-xs text-purple-600 hover:text-purple-700">See all</button>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <button className="aspect-video bg-gradient-to-br from-blue-400 to-blue-600 rounded-lg border border-gray-200 hover:border-blue-300 hover:shadow-md transition-all duration-200" />
+                  <button className="aspect-video bg-gradient-to-br from-purple-400 to-purple-600 rounded-lg border border-gray-200 hover:border-purple-300 hover:shadow-md transition-all duration-200" />
+                  <button className="aspect-video bg-gradient-to-br from-green-400 to-green-600 rounded-lg border border-gray-200 hover:border-green-300 hover:shadow-md transition-all duration-200" />
+                  <button className="aspect-video bg-gradient-to-br from-orange-400 to-orange-600 rounded-lg border border-gray-200 hover:border-orange-300 hover:shadow-md transition-all duration-200" />
+                  <button className="aspect-video bg-gradient-to-br from-pink-400 to-pink-600 rounded-lg border border-gray-200 hover:border-pink-300 hover:shadow-md transition-all duration-200" />
+                  <button className="aspect-video bg-gradient-to-br from-indigo-400 to-indigo-600 rounded-lg border border-gray-200 hover:border-indigo-300 hover:shadow-md transition-all duration-200" />
+                </div>
+                
+                <div className="flex items-center justify-between">
+                  <h3 className="text-sm font-semibold text-gray-900">All results</h3>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <button className="aspect-video bg-gradient-to-br from-teal-400 to-teal-600 rounded-lg border border-gray-200 hover:border-teal-300 hover:shadow-md transition-all duration-200" />
+                  <button className="aspect-video bg-gradient-to-br from-red-400 to-red-600 rounded-lg border border-gray-200 hover:border-red-300 hover:shadow-md transition-all duration-200" />
+                  <button className="aspect-video bg-gradient-to-br from-yellow-400 to-yellow-600 rounded-lg border border-gray-200 hover:border-yellow-300 hover:shadow-md transition-all duration-200" />
+                  <button className="aspect-video bg-gradient-to-br from-gray-400 to-gray-600 rounded-lg border border-gray-200 hover:border-gray-300 hover:shadow-md transition-all duration-200" />
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Math Elements Tab */}
+        {((activeTab === 'elements' && isSidebarExpanded) || hoveredTab === 'elements') && (
+          <div className="w-80 bg-white border-r border-gray-200 shadow-lg transition-all duration-300 ease-in-out relative h-full flex flex-col">
+            {/* Collapse Button */}
+            {isSidebarExpanded && activeTab === 'elements' && (
+              <button
+                onClick={() => setIsSidebarExpanded(false)}
+                className="absolute -right-3 top-1/2 transform -translate-y-1/2 w-6 h-6 bg-white border border-gray-200 hover:bg-gray-50 rounded-full flex items-center justify-center shadow-md transition-colors duration-200 z-10"
+              >
+                <ChevronRight size={14} className="text-gray-600" />
+              </button>
+            )}
+            
+            <div className="p-6 flex-1 overflow-y-auto">
+              <div className="space-y-6">
+                {/* Basic Operations */}
+                <div>
+                  <h3 className="text-sm font-semibold text-gray-900 mb-3">Basic Operations</h3>
+                  <div className="grid grid-cols-4 gap-2">
+                    <button onClick={() => addElement('text', 'heading', '+')} className="p-3 border border-gray-200 rounded-lg hover:border-purple-300 hover:bg-purple-50 flex flex-col items-center gap-1 hover:shadow-md transition-all duration-200">
+                      <span className="text-2xl">+</span>
+                      <span className="text-xs">Plus</span>
+                    </button>
+                    <button onClick={() => addElement('text', 'heading', '−')} className="p-3 border border-gray-200 rounded-lg hover:border-purple-300 hover:bg-purple-50 flex flex-col items-center gap-1 hover:shadow-md transition-all duration-200">
+                      <span className="text-2xl">−</span>
+                      <span className="text-xs">Minus</span>
+                    </button>
+                    <button onClick={() => addElement('text', 'heading', '×')} className="p-3 border border-gray-200 rounded-lg hover:border-purple-300 hover:bg-purple-50 flex flex-col items-center gap-1 hover:shadow-md transition-all duration-200">
+                      <span className="text-2xl">×</span>
+                      <span className="text-xs">Multiply</span>
+                    </button>
+                    <button onClick={() => addElement('text', 'heading', '÷')} className="p-3 border border-gray-200 rounded-lg hover:border-purple-300 hover:bg-purple-50 flex flex-col items-center gap-1 hover:shadow-md transition-all duration-200">
+                      <span className="text-2xl">÷</span>
+                      <span className="text-xs">Divide</span>
+                    </button>
+                    <button onClick={() => addElement('text', 'heading', '=')} className="p-3 border border-gray-200 rounded-lg hover:border-purple-300 hover:bg-purple-50 flex flex-col items-center gap-1 hover:shadow-md transition-all duration-200">
+                      <span className="text-2xl">=</span>
+                      <span className="text-xs">Equals</span>
+                    </button>
+                    <button onClick={() => addElement('text', 'heading', '≠')} className="p-3 border border-gray-200 rounded-lg hover:border-purple-300 hover:bg-purple-50 flex flex-col items-center gap-1 hover:shadow-md transition-all duration-200">
+                      <span className="text-2xl">≠</span>
+                      <span className="text-xs">Not Equal</span>
+                    </button>
+                    <button onClick={() => addElement('text', 'heading', '<')} className="p-3 border border-gray-200 rounded-lg hover:border-purple-300 hover:bg-purple-50 flex flex-col items-center gap-1 hover:shadow-md transition-all duration-200">
+                      <span className="text-2xl">&lt;</span>
+                      <span className="text-xs">Less</span>
+                    </button>
+                    <button onClick={() => addElement('text', 'heading', '>')} className="p-3 border border-gray-200 rounded-lg hover:border-purple-300 hover:bg-purple-50 flex flex-col items-center gap-1 hover:shadow-md transition-all duration-200">
+                      <span className="text-2xl">&gt;</span>
+                      <span className="text-xs">Greater</span>
+                    </button>
+                  </div>
+                </div>
+
+                {/* Fractions */}
+                <div>
+                  <h3 className="text-sm font-semibold text-gray-900 mb-3">Fractions & Decimals</h3>
+                  <div className="grid grid-cols-4 gap-2">
+                    <button onClick={() => addElement('text', 'heading', '½')} className="p-3 border border-gray-200 rounded-lg hover:border-purple-300 hover:bg-purple-50 flex flex-col items-center gap-1 hover:shadow-md transition-all duration-200">
+                      <span className="text-lg">½</span>
+                      <span className="text-xs">Half</span>
+                    </button>
+                    <button onClick={() => addElement('text', 'heading', '⅓')} className="p-3 border border-gray-200 rounded-lg hover:border-purple-300 hover:bg-purple-50 flex flex-col items-center gap-1 hover:shadow-md transition-all duration-200">
+                      <span className="text-lg">⅓</span>
+                      <span className="text-xs">Third</span>
+                    </button>
+                    <button onClick={() => addElement('text', 'heading', '¼')} className="p-3 border border-gray-200 rounded-lg hover:border-purple-300 hover:bg-purple-50 flex flex-col items-center gap-1 hover:shadow-md transition-all duration-200">
+                      <span className="text-lg">¼</span>
+                      <span className="text-xs">Quarter</span>
+                    </button>
+                    <button onClick={() => addElement('text', 'heading', '⅔')} className="p-3 border border-gray-200 rounded-lg hover:border-purple-300 hover:bg-purple-50 flex flex-col items-center gap-1 hover:shadow-md transition-all duration-200">
+                      <span className="text-lg">⅔</span>
+                      <span className="text-xs">Two Thirds</span>
+                    </button>
+                    <button onClick={() => addElement('text', 'heading', '¾')} className="p-3 border border-gray-200 rounded-lg hover:border-purple-300 hover:bg-purple-50 flex flex-col items-center gap-1 hover:shadow-md transition-all duration-200">
+                      <span className="text-lg">¾</span>
+                      <span className="text-xs">Three Fourths</span>
+                    </button>
+                    <button onClick={() => addElement('text', 'heading', '%')} className="p-3 border border-gray-200 rounded-lg hover:border-purple-300 hover:bg-purple-50 flex flex-col items-center gap-1 hover:shadow-md transition-all duration-200">
+                      <span className="text-lg">%</span>
+                      <span className="text-xs">Percent</span>
+                    </button>
+                    <button onClick={() => addElement('text', 'heading', '‰')} className="p-3 border border-gray-200 rounded-lg hover:border-purple-300 hover:bg-purple-50 flex flex-col items-center gap-1 hover:shadow-md transition-all duration-200">
+                      <span className="text-lg">‰</span>
+                      <span className="text-xs">Per mille</span>
+                    </button>
+                    <button onClick={() => addElement('text', 'heading', '°')} className="p-3 border border-gray-200 rounded-lg hover:border-purple-300 hover:bg-purple-50 flex flex-col items-center gap-1 hover:shadow-md transition-all duration-200">
+                      <span className="text-lg">°</span>
+                      <span className="text-xs">Degree</span>
+                    </button>
+                  </div>
+                </div>
+
+                {/* Advanced Symbols */}
+                <div>
+                  <h3 className="text-sm font-semibold text-gray-900 mb-3">Advanced Symbols</h3>
+                  <div className="grid grid-cols-4 gap-2">
+                    <button onClick={() => addElement('text', 'heading', '√')} className="p-3 border border-gray-200 rounded-lg hover:border-purple-300 hover:bg-purple-50 flex flex-col items-center gap-1 hover:shadow-md transition-all duration-200">
+                      <span className="text-lg">√</span>
+                      <span className="text-xs">Square Root</span>
+                    </button>
+                    <button onClick={() => addElement('text', 'heading', '∛')} className="p-3 border border-gray-200 rounded-lg hover:border-purple-300 hover:bg-purple-50 flex flex-col items-center gap-1 hover:shadow-md transition-all duration-200">
+                      <span className="text-lg">∛</span>
+                      <span className="text-xs">Cube Root</span>
+                    </button>
+                    <button onClick={() => addElement('text', 'heading', 'π')} className="p-3 border border-gray-200 rounded-lg hover:border-purple-300 hover:bg-purple-50 flex flex-col items-center gap-1 hover:shadow-md transition-all duration-200">
+                      <span className="text-lg">π</span>
+                      <span className="text-xs">Pi</span>
+                    </button>
+                    <button onClick={() => addElement('text', 'heading', '∞')} className="p-3 border border-gray-200 rounded-lg hover:border-purple-300 hover:bg-purple-50 flex flex-col items-center gap-1 hover:shadow-md transition-all duration-200">
+                      <span className="text-lg">∞</span>
+                      <span className="text-xs">Infinity</span>
+                    </button>
+                    <button onClick={() => addElement('text', 'heading', '∑')} className="p-3 border border-gray-200 rounded-lg hover:border-purple-300 hover:bg-purple-50 flex flex-col items-center gap-1 hover:shadow-md transition-all duration-200">
+                      <span className="text-lg">∑</span>
+                      <span className="text-xs">Sum</span>
+                    </button>
+                    <button onClick={() => addElement('text', 'heading', '∫')} className="p-3 border border-gray-200 rounded-lg hover:border-purple-300 hover:bg-purple-50 flex flex-col items-center gap-1 hover:shadow-md transition-all duration-200">
+                      <span className="text-lg">∫</span>
+                      <span className="text-xs">Integral</span>
+                    </button>
+                    <button onClick={() => addElement('text', 'heading', '∆')} className="p-3 border border-gray-200 rounded-lg hover:border-purple-300 hover:bg-purple-50 flex flex-col items-center gap-1 hover:shadow-md transition-all duration-200">
+                      <span className="text-lg">∆</span>
+                      <span className="text-xs">Delta</span>
+                    </button>
+                    <button onClick={() => addElement('text', 'heading', 'α')} className="p-3 border border-gray-200 rounded-lg hover:border-purple-300 hover:bg-purple-50 flex flex-col items-center gap-1 hover:shadow-md transition-all duration-200">
+                      <span className="text-lg">α</span>
+                      <span className="text-xs">Alpha</span>
+                    </button>
+                  </div>
+                </div>
+
+                {/* Geometric Shapes */}
+                <div>
+                  <h3 className="text-sm font-semibold text-gray-900 mb-3">Geometric Shapes</h3>
+                  <div className="grid grid-cols-4 gap-2">
+                    <button onClick={() => addElement('shape')} className="p-3 border border-gray-200 rounded-lg hover:border-purple-300 hover:bg-purple-50 flex flex-col items-center gap-1 hover:shadow-md transition-all duration-200">
+                      <Square size={20} />
+                      <span className="text-xs">Square</span>
+                    </button>
+                    <button onClick={() => addElement('shape')} className="p-3 border border-gray-200 rounded-lg hover:border-purple-300 hover:bg-purple-50 flex flex-col items-center gap-1 hover:shadow-md transition-all duration-200">
+                      <span className="text-lg">○</span>
+                      <span className="text-xs">Circle</span>
+                    </button>
+                    <button onClick={() => addElement('shape')} className="p-3 border border-gray-200 rounded-lg hover:border-purple-300 hover:bg-purple-50 flex flex-col items-center gap-1 hover:shadow-md transition-all duration-200">
+                      <span className="text-lg">△</span>
+                      <span className="text-xs">Triangle</span>
+                    </button>
+                    <button onClick={() => addElement('shape')} className="p-3 border border-gray-200 rounded-lg hover:border-purple-300 hover:bg-purple-50 flex flex-col items-center gap-1 hover:shadow-md transition-all duration-200">
+                      <span className="text-lg">◇</span>
+                      <span className="text-xs">Diamond</span>
+                    </button>
+                    <button onClick={() => addElement('table')} className="p-3 border border-gray-200 rounded-lg hover:border-purple-300 hover:bg-purple-50 flex flex-col items-center gap-1 hover:shadow-md transition-all duration-200">
+                      <Table size={20} />
+                      <span className="text-xs">Grid</span>
+                    </button>
+                    <button onClick={() => addElement('graphic')} className="p-3 border border-gray-200 rounded-lg hover:border-purple-300 hover:bg-purple-50 flex flex-col items-center gap-1 hover:shadow-md transition-all duration-200">
+                      <Shapes size={20} />
+                      <span className="text-xs">Graph</span>
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+          {/* Text Tab */}
+          {((activeTab === 'text' && isSidebarExpanded) || hoveredTab === 'text') && (
+            <div className="w-80 bg-white border-r border-gray-200 shadow-lg transition-all duration-300 ease-in-out relative h-full flex flex-col">
+              {/* Collapse Button - Fixed position at right edge */}
+              {isSidebarExpanded && activeTab === 'text' && (
+                <button
+                  onClick={() => setIsSidebarExpanded(false)}
+                  className="absolute -right-3 top-1/2 transform -translate-y-1/2 w-6 h-6 bg-white border border-gray-200 hover:bg-gray-50 rounded-full flex items-center justify-center shadow-md transition-colors duration-200 z-10"
+                >
+                  <ChevronRight size={14} className="text-gray-600" />
+                </button>
+              )}
+              <div className="p-6 flex-1 overflow-y-auto">
+              <div className="space-y-4">
+                <div>
+                  <button
+                    onClick={() => addElement('text')}
+                    className="w-full p-4 border-2 border-dashed border-gray-300 rounded-lg hover:border-purple-400 hover:bg-purple-50 flex items-center gap-3 transition-all duration-200"
+                  >
+                    <Plus size={20} className="text-gray-400" />
+                    <span className="text-gray-600 font-medium">Add a text box</span>
+                  </button>
+                </div>
+
+                <div>
+                  <h3 className="text-sm font-semibold text-gray-900 mb-3">Default text styles</h3>
+                  <div className="space-y-2">
+                    <button
+                      onClick={() => addElement('text', 'heading')}
+                      className="w-full p-3 text-left border border-gray-200 rounded-lg hover:border-purple-300 hover:bg-purple-50 transition-all duration-200"
+                    >
+                      <div className="text-lg font-bold">Add a heading</div>
+                    </button>
+                    <button
+                      onClick={() => addElement('text', 'subheading')}
+                      className="w-full p-3 text-left border border-gray-200 rounded-lg hover:border-purple-300 hover:bg-purple-50 transition-all duration-200"
+                    >
+                      <div className="text-base font-semibold">Add a subheading</div>
+                    </button>
+                    <button
+                      onClick={() => addElement('text', 'body')}
+                      className="w-full p-3 text-left border border-gray-200 rounded-lg hover:border-purple-300 hover:bg-purple-50 transition-all duration-200"
+                    >
+                      <div className="text-sm">Add a little bit of body text</div>
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+          {/* Uploads Tab */}
+          {((activeTab === 'uploads' && isSidebarExpanded) || hoveredTab === 'uploads') && (
+            <div className="w-80 bg-white border-r border-gray-200 shadow-lg transition-all duration-300 ease-in-out relative h-full flex flex-col">
+              {/* Collapse Button - Fixed position at right edge */}
+              {isSidebarExpanded && activeTab === 'uploads' && (
+                <button
+                  onClick={() => setIsSidebarExpanded(false)}
+                  className="absolute -right-3 top-1/2 transform -translate-y-1/2 w-6 h-6 bg-white border border-gray-200 hover:bg-gray-50 rounded-full flex items-center justify-center shadow-md transition-colors duration-200 z-10"
+                >
+                  <ChevronRight size={14} className="text-gray-600" />
+                </button>
+              )}
+              <div className="p-6 flex-1 overflow-y-auto">
+              <h3 className="text-sm font-semibold text-gray-900 mb-4">Uploads</h3>
+              <div 
+                className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center hover:border-purple-400 hover:bg-purple-50 transition-all duration-200"
+                onDragOver={(e) => {
+                  e.preventDefault();
+                  e.currentTarget.classList.add('border-purple-400', 'bg-purple-50');
+                }}
+                onDragLeave={(e) => {
+                  e.currentTarget.classList.remove('border-purple-400', 'bg-purple-50');
+                }}
+                onDrop={(e) => {
+                  e.preventDefault();
+                  e.currentTarget.classList.remove('border-purple-400', 'bg-purple-50');
+                  
+                  const files = e.dataTransfer.files;
+                  if (files && files.length > 0) {
+                    const file = files[0];
+                    console.log('Dropped file:', file.name, file.type, file.size);
+                    if (file.type.startsWith('image/')) {
+                      console.log('Processing dropped image with FileReader');
+                      const reader = new FileReader();
+                      reader.onload = (event) => {
+                        const dataUrl = event.target?.result as string;
+                        console.log('Dropped image loaded successfully');
+                        
+                        const newElement: SlideElement = {
+                          id: `element-${Date.now()}`,
+                          type: 'image',
+                          x: 100,
+                          y: 100,
+                          width: 200,
+                          height: 200,
+                          content: dataUrl,
+                          style: { backgroundColor: '#f3f4f6' }
+                        };
+                        const newSlides = slides.map((slide, index) => {
+                          if (index === currentSlideIndex) {
+                            return { ...slide, elements: [...slide.elements, newElement] };
+                          }
+                          return slide;
+                        });
+                        setSlides(newSlides);
+                        setSelectedElement(newElement.id);
+                        saveToHistory(newSlides);
+                        console.log('Image element added to slide via drag & drop');
+                      };
+                      reader.onerror = (e) => {
+                        console.error('FileReader error (drop):', e);
+                        console.error('FileReader error details (drop):', reader.error);
+                        console.error('Dropped file info:', { name: file.name, size: file.size, type: file.type });
+                        alert(`Failed to load dropped image: ${reader.error?.message || 'Unknown error'}. Please try again with a different image.`);
+                      };
+                      reader.readAsDataURL(file);
+                    } else {
+                      alert('Please drop a valid image file (JPG, PNG, etc.)');
+                    }
+                  }
+                }}
+              >
+                <Upload size={32} className="mx-auto text-gray-400 mb-2" />
+                <p className="text-sm text-gray-600 mb-2">Drag and drop your image here</p>
+                <p className="text-xs text-gray-500">or</p>
+                <input
+                  type="file"
+                  accept="image/*"
+                  multiple
+                  className="hidden"
+                  id="file-upload"
+                  onChange={(e) => {
+                    console.log('File input changed:', e.target.files);
+                    const files = e.target.files;
+                    if (files && files.length > 0) {
+                      const file = files[0];
+                      console.log('Selected file:', file.name, file.type, file.size);
+                    if (file.type.startsWith('image/')) {
+                      console.log('Processing image file with FileReader');
+                      
+                      // Check file size (max 10MB)
+                      if (file.size > 10 * 1024 * 1024) {
+                        alert('File size too large. Please select an image smaller than 10MB.');
+                        return;
+                      }
+                      
+                      const reader = new FileReader();
+                      
+                      reader.onloadstart = () => {
+                        console.log('FileReader started loading file');
+                      };
+                      
+                      reader.onprogress = (e) => {
+                        if (e.lengthComputable) {
+                          const percentLoaded = Math.round((e.loaded / e.total) * 100);
+                          console.log(`Loading progress: ${percentLoaded}%`);
+                        }
+                      };
+                      
+                      reader.onload = (event) => {
+                        try {
+                          const dataUrl = event.target?.result as string;
+                          if (!dataUrl || dataUrl.length === 0) {
+                            throw new Error('Empty data URL received');
+                          }
+                          console.log('Image loaded successfully, data URL length:', dataUrl.length);
+                          
+                          const newElement: SlideElement = {
+                            id: `element-${Date.now()}`,
+                            type: 'image',
+                            x: 100,
+                            y: 100,
+                            width: 200,
+                            height: 200,
+                            content: dataUrl,
+                            style: { backgroundColor: '#f3f4f6' }
+                          };
+
+                          const newSlides = slides.map((slide, index) => {
+                            if (index === currentSlideIndex) {
+                              return { ...slide, elements: [...slide.elements, newElement] };
+                            }
+                            return slide;
+                          });
+
+                          setSlides(newSlides);
+                          setSelectedElement(newElement.id);
+                          saveToHistory(newSlides);
+                          console.log('Image element added to slide successfully');
+                        } catch (err) {
+                          console.error('Error processing loaded image:', err);
+                          alert('Failed to process image data. Please try again.');
+                        }
+                      };
+                      
+                      reader.onerror = (e) => {
+                        console.error('FileReader error:', e);
+                        console.error('FileReader error details:', reader.error);
+                        console.error('File info:', { name: file.name, size: file.size, type: file.type });
+                        alert(`Failed to load image: ${reader.error?.message || 'Unknown error'}. Please try again with a different image.`);
+                      };
+                      
+                      reader.onabort = () => {
+                        console.log('FileReader aborted');
+                        alert('Image loading was cancelled.');
+                      };
+                      
+                      // Try to read as data URL
+                      try {
+                        reader.readAsDataURL(file);
+                      } catch (err) {
+                        console.error('Failed to start FileReader:', err);
+                        alert('Failed to start reading the file. Please try again.');
+                      }
+                    } else {
+                        alert('Please select a valid image file (JPG, PNG, etc.)');
+                      }
+                    }
+                    // Reset file input
+                    e.target.value = '';
+                  }}
+                />
+                <button
+                  type="button"
+                  className="mt-2 inline-block px-4 py-2 bg-purple-600 text-white rounded-lg text-sm hover:bg-purple-700 cursor-pointer transition-all duration-200"
+                  onClick={() => {
+                    console.log('Choose files button clicked');
+                    // Trigger file input click
+                    const fileInput = document.getElementById('file-upload') as HTMLInputElement;
+                    if (fileInput) {
+                      fileInput.click();
+                    }
+                  }}
+                >
+                  Choose files
+                </button>
+                <p className="text-xs text-gray-500 mt-2">JPG, PNG up to 10MB</p>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Main Content Area */}
+      <div className="flex-1 flex flex-col">
+        {/* Top Toolbar */}
+        <div className="flex items-center justify-between bg-white border-b border-gray-200 px-4 py-2">
+          <div className="flex items-center gap-4">
+            <h1 className="text-xl font-bold text-gray-900">Create Slide</h1>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={undo}
+                disabled={historyIndex === 0}
+                className="p-2 rounded hover:bg-gray-100 disabled:opacity-50"
+              >
+                <Undo size={20} />
+              </button>
+              <button
+                onClick={redo}
+                disabled={historyIndex === history.length - 1}
+                className="p-2 rounded hover:bg-gray-100 disabled:opacity-50"
+              >
+                <Redo size={20} />
+              </button>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <button 
+              onClick={exportToPowerPoint}
+              className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+            >
+              <FileDown size={16} />
+              Export PPTX
+            </button>
+            <button 
+              onClick={() => setShowSaveDialog(true)}
+              className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
+            >
+              <Save size={16} />
+              Save to Cloud
+            </button>
+          </div>
         </div>
 
-        {/* Content Panel */}
-        <div className={cn( "transition-all duration-300 ease-in-out overflow-y-auto border-l border-gray-200", isOpen ? "w-64 p-4" : "w-0 p-0 overflow-hidden" )}>
-          <div className={cn("w-64", { 'opacity-0': !isOpen })}>
-            {activeTab === 'elements' && ( <div> <h3 className="text-xs font-semibold uppercase text-gray-500 mb-2">Shapes</h3> <div className="grid grid-cols-3 gap-2"> <Tooltip><TooltipTrigger asChild><Button variant="outline" size="icon-lg" onClick={() => onAddElement('shape')}><Square size={20} /></Button></TooltipTrigger><TooltipContent>Add Square</TooltipContent></Tooltip> </div> </div> )}
-            {activeTab === 'text' && ( <div className="space-y-2"> <h3 className="text-xs font-semibold uppercase text-gray-500 mb-2">Add Text</h3> <Button variant="outline" className="w-full justify-start h-auto py-2 text-left text-lg font-bold" onClick={() => onAddElement('text')}>Add Heading</Button> <Button variant="outline" className="w-full justify-start h-auto py-2 text-left text-base font-semibold" onClick={() => onAddElement('text')}>Add Subheading</Button> <Button variant="outline" className="w-full justify-start h-auto py-2 text-left text-sm" onClick={() => onAddElement('text')}>Add body text</Button> </div> )}
-            {activeTab === 'uploads' && ( <div> <h3 className="text-xs font-semibold uppercase text-gray-500 mb-2">Upload Image</h3> <label htmlFor="image-upload-sidebar" className="block cursor-pointer p-4 border-2 border-dashed rounded hover:border-blue-400 hover:bg-blue-50 text-center text-gray-500 hover:text-blue-600" onDrop={handleDrop} onDragOver={handleDragOver}> <ImageIcon size={24} className="mx-auto" /> <span className="mt-1 block text-xs">Click or drag image</span> <span className="mt-1 block text-[10px] text-gray-400">PNG, JPG up to 10MB</span> </label> <input id="image-upload-sidebar" type="file" accept="image/*" className="hidden" onChange={(e) => { onFileUpload(e.target.files); e.target.value = ''; }} /> </div> )}
+        {/* Canvas Area */}
+        <div className="flex-1 flex items-center justify-center p-8">
+          <div
+            ref={canvasRef}
+            onClick={handleCanvasClick}
+            className="relative bg-white shadow-lg"
+            style={{
+              width: '800px',
+              height: '600px',
+              backgroundColor: currentSlide.backgroundColor
+            }}
+          >
+              {currentSlide.elements.map((element) => {
+                // Use drag preview position if this element is being dragged
+                const isDraggingElement = isDragging && selectedElement === element.id;
+                const displayX = isDraggingElement && dragPreview ? dragPreview.x : element.x;
+                const displayY = isDraggingElement && dragPreview ? dragPreview.y : element.y;
+                
+                return (
+                  <div 
+                    key={element.id} 
+                    className="relative"
+                    style={{
+                      left: displayX,
+                      top: displayY,
+                      width: element.width,
+                      height: element.height
+                    }}
+                  >
+                    <div
+                      onClick={() => handleElementClick(element.id)}
+                      onMouseDown={(e) => handleMouseDown(e, element.id)}
+                      className={cn(
+                        "w-full h-full border-2 transition-none",
+                        selectedElement === element.id ? "border-blue-500" : "border-transparent",
+                        isDraggingElement ? "cursor-grabbing" : "cursor-grab",
+                        isDraggingElement && "opacity-90 shadow-lg"
+                      )}
+                      style={{
+                        fontSize: element.style?.fontSize,
+                        fontFamily: element.style?.fontFamily,
+                        color: element.style?.color,
+                        backgroundColor: element.style?.backgroundColor,
+                        borderRadius: element.style?.borderRadius,
+                        userSelect: 'none',
+                        transform: isDraggingElement ? 'scale(1.02)' : 'scale(1)',
+                        transition: isDraggingElement ? 'none' : 'transform 0.1s ease'
+                      }}
+                    >
+                      {element.type === 'text' && (
+                        element.isEditing ? (
+                          <textarea
+                            value={element.content || ''}
+                            onChange={(e) => handleTextEdit(element.id, e.target.value)}
+                            onBlur={() => handleTextEditEnd(element.id)}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Escape') {
+                                e.preventDefault();
+                                handleTextEditEnd(element.id);
+                              }
+                            }}
+                            onSelect={(e) => {
+                              const textarea = e.target as HTMLTextAreaElement;
+                              setSavedSelection({
+                                start: textarea.selectionStart || 0,
+                                end: textarea.selectionEnd || 0
+                              });
+                            }}
+                            data-element-id={element.id}
+                            className="w-full h-full resize-none border-none outline-none bg-transparent overflow-hidden"
+                            style={{
+                              fontSize: element.style?.fontSize,
+                              fontFamily: element.style?.fontFamily,
+                              color: element.style?.color,
+                              fontWeight: element.style?.fontWeight,
+                              fontStyle: element.style?.fontStyle,
+                              textDecoration: element.style?.textDecoration,
+                              textAlign: element.style?.textAlign,
+                              whiteSpace: 'pre-wrap',
+                              wordWrap: 'break-word'
+                            }}
+                            autoFocus
+                          />
+                        ) : (
+                          <div
+                            style={{
+                              fontSize: element.style?.fontSize,
+                              fontFamily: element.style?.fontFamily,
+                              color: element.style?.color,
+                              fontWeight: element.style?.fontWeight,
+                              fontStyle: element.style?.fontStyle,
+                              textDecoration: element.style?.textDecoration,
+                              textAlign: element.style?.textAlign,
+                              whiteSpace: 'pre-wrap',
+                              wordWrap: 'break-word'
+                            }}
+                          >
+                            {element.content}
+                          </div>
+                        )
+                      )}
+                      {element.type === 'image' && (
+                        <div className="w-full h-full flex items-center justify-center overflow-hidden">
+                          {element.content ? (
+                            <img 
+                              src={element.content} 
+                              alt="Uploaded" 
+                              className="w-full h-full object-cover"
+                            />
+                          ) : (
+                            <div className="w-full h-full bg-gray-200 flex items-center justify-center text-gray-500">
+                              <Image size={32} />
+                            </div>
+                          )}
+                        </div>
+                      )}
+                      {element.type === 'shape' && (
+                        <div className="w-full h-full flex items-center justify-center">
+                          <Square size={32} />
+                        </div>
+                      )}
+                      {element.type === 'table' && (
+                        <div className="w-full h-full bg-white border border-gray-300 flex items-center justify-center text-gray-500">
+                          <Table size={32} />
+                        </div>
+                      )}
+                      {element.type === 'graphic' && (
+                        <div className="w-full h-full bg-gradient-to-br from-blue-400 to-purple-600 flex items-center justify-center text-white">
+                          <Shapes size={32} />
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Element Controls */}
+                    {selectedElement === element.id && !isDraggingElement && (
+                      <div
+                        className="absolute flex gap-1"
+                        style={{
+                          left: element.width + 5,
+                          top: -5
+                        }}
+                      >
+                        <button
+                          onClick={() => handleDeleteElement(element.id)}
+                          className="p-1 bg-red-500 text-white rounded hover:bg-red-600"
+                          title="Delete element"
+                        >
+                          <Trash2 size={12} />
+                        </button>
+                      </div>
+                    )}
+
+                    {/* Resize Handles */}
+                    {selectedElement === element.id && !isDraggingElement && (
+                      <>
+                        {/* Southeast */}
+                        <div
+                          className="absolute w-3 h-3 bg-blue-500 cursor-se-resize hover:bg-blue-600 transition-colors duration-200"
+                          style={{
+                            right: -6,
+                            bottom: -6
+                          }}
+                          onMouseDown={(e) => handleResizeStart(e, element.id, 'se')}
+                        />
+                        {/* Southwest */}
+                        <div
+                          className="absolute w-3 h-3 bg-blue-500 cursor-sw-resize hover:bg-blue-600 transition-colors duration-200"
+                          style={{
+                            left: -6,
+                            bottom: -6
+                          }}
+                          onMouseDown={(e) => handleResizeStart(e, element.id, 'sw')}
+                        />
+                        {/* Northeast */}
+                        <div
+                          className="absolute w-3 h-3 bg-blue-500 cursor-ne-resize hover:bg-blue-600 transition-colors duration-200"
+                          style={{
+                            right: -6,
+                            top: -6
+                          }}
+                          onMouseDown={(e) => handleResizeStart(e, element.id, 'ne')}
+                        />
+                        {/* Northwest */}
+                        <div
+                          className="absolute w-3 h-3 bg-blue-500 cursor-nw-resize hover:bg-blue-600 transition-colors duration-200"
+                          style={{
+                            left: -6,
+                            top: -6
+                          }}
+                          onMouseDown={(e) => handleResizeStart(e, element.id, 'nw')}
+                        />
+                        {/* East (Right) */}
+                        <div
+                          className="absolute w-3 h-3 bg-blue-500 cursor-e-resize hover:bg-blue-600 transition-colors duration-200"
+                          style={{
+                            right: -6,
+                            top: '50%',
+                            transform: 'translateY(-50%)'
+                          }}
+                          onMouseDown={(e) => handleResizeStart(e, element.id, 'e')}
+                        />
+                        {/* West (Left) */}
+                        <div
+                          className="absolute w-3 h-3 bg-blue-500 cursor-w-resize hover:bg-blue-600 transition-colors duration-200"
+                          style={{
+                            left: -6,
+                            top: '50%',
+                            transform: 'translateY(-50%)'
+                          }}
+                          onMouseDown={(e) => handleResizeStart(e, element.id, 'w')}
+                        />
+                      </>
+                    )}
+                  </div>
+                );
+              })}
+          </div>
+        </div>
+
+        {/* Bottom Slide Navigation - Enhanced Canva Style */}
+        <div className="bg-white border-t border-gray-200 px-8 py-6">
+          <div className="flex items-center justify-between">
+            {/* Slide thumbnails - Larger and more spacious */}
+            <div className="flex items-center gap-3">
+              {slides.map((slide, index) => (
+                <div
+                  key={slide.id}
+                  data-slide-index={index}
+                  onClick={() => handleSlideClick(index)}
+                  onContextMenu={(e) => handleSlideRightClick(e, index)}
+                  onMouseDown={(e) => handleSlideMouseDown(e, index)}
+                  onMouseUp={(e) => handleSlideMouseUp(e, index)}
+                  onMouseEnter={() => handleSlideMouseEnter(index)}
+                  onMouseLeave={() => handleSlideMouseLeave(index)}
+                  className={cn(
+                    "w-32 h-20 bg-white border-2 rounded-xl shadow-sm cursor-pointer transition-all duration-200 hover:shadow-lg relative overflow-hidden group select-none",
+                    index === currentSlideIndex 
+                      ? "border-purple-500 shadow-lg ring-2 ring-purple-100" 
+                      : "border-gray-200 hover:border-gray-300",
+                    isDraggingSlide && dragSlideIndex === index && "opacity-50 scale-95",
+                    isDraggingSlide && dragSlideIndex !== index && "cursor-grab"
+                  )}
+                  style={{
+                    cursor: isDraggingSlide ? (dragSlideIndex === index ? 'grabbing' : 'grab') : 'pointer'
+                  }}
+                >
+                  {/* Slide thumbnail content - Better preview */}
+                  <div className="w-full h-full bg-gradient-to-br from-gray-50 to-gray-100 flex flex-col items-center justify-center text-sm relative">
+                    {/* Mini elements preview */}
+                    {slide.elements.length > 0 ? (
+                      <div className="w-full h-full p-2">
+                        {slide.elements.slice(0, 3).map((element, elIndex) => (
+                          <div
+                            key={elIndex}
+                            className="absolute"
+                            style={{
+                              left: `${(element.x / 800) * 100}%`,
+                              top: `${(element.y / 600) * 100}%`,
+                              width: `${Math.min((element.width / 800) * 100, 20)}%`,
+                              height: `${Math.min((element.height / 600) * 100, 15)}%`,
+                              backgroundColor: element.type === 'text' ? '#3b82f6' : element.type === 'image' ? '#10b981' : '#f59e0b',
+                              borderRadius: '2px'
+                            }}
+                          />
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="flex flex-col items-center justify-center text-gray-400">
+                        <Layers size={16} className="mb-1" />
+                        <span className="text-xs font-medium">Slide {index + 1}</span>
+                      </div>
+                    )}
+                    
+                    {/* Slide number badge */}
+                    <div className="absolute top-1 left-1 bg-black bg-opacity-70 text-white text-xs px-1.5 py-0.5 rounded">
+                      {index + 1}
+                    </div>
+                  </div>
+                </div>
+              ))}
+              
+              {/* Add slide button - Enhanced */}
+              <button
+                onClick={addSlide}
+                className="w-32 h-20 bg-gray-50 hover:bg-gray-100 border-2 border-dashed border-gray-300 rounded-xl flex items-center justify-center transition-all duration-200 hover:border-purple-400 hover:bg-purple-50 group"
+              >
+                <div className="flex flex-col items-center gap-1">
+                  <Plus size={20} className="text-gray-400 group-hover:text-purple-500" />
+                  <span className="text-xs text-gray-500 group-hover:text-purple-600 font-medium">Add page</span>
+                </div>
+              </button>
+            </div>
+
+            {/* Zoom controls */}
+            <div className="flex items-center gap-3 ml-auto">
+              <button className="w-8 h-8 bg-gray-100 hover:bg-gray-200 rounded-full flex items-center justify-center transition-colors duration-200">
+                <span className="text-xs text-gray-600">-</span>
+              </button>
+              <div className="flex items-center gap-2">
+                <div className="w-20 h-1 bg-gray-200 rounded-full">
+                  <div className="w-12 h-1 bg-purple-500 rounded-full"></div>
+                </div>
+                <span className="text-xs text-gray-600 w-8">45%</span>
+              </div>
+              <button className="w-8 h-8 bg-gray-100 hover:bg-gray-200 rounded-full flex items-center justify-center transition-colors duration-200">
+                <span className="text-xs text-gray-600">+</span>
+              </button>
+            </div>
+
+            {/* Slide info */}
+            <div className="flex items-center gap-2">
+              <button className="w-8 h-8 bg-gray-100 hover:bg-gray-200 rounded-full flex items-center justify-center transition-colors duration-200">
+                <Grid3X3 size={14} className="text-gray-600" />
+              </button>
+              <span className="text-xs text-gray-600">Pages {currentSlideIndex + 1}/{slides.length}</span>
+              <button className="w-8 h-8 bg-gray-100 hover:bg-gray-200 rounded-full flex items-center justify-center transition-colors duration-200">
+                <span className="text-xs text-gray-600">⛶</span>
+              </button>
+            </div>
           </div>
         </div>
       </div>
-    </TooltipProvider>
-  );
-};
 
-// --- ResizeHandles ---
-interface ResizeHandlesProps { elementId: string; onResizeHandleMouseDown: (e: React.MouseEvent, elementId: string, handle: string) => void; }
-const handles = ['nw', 'ne', 'sw', 'se', 'n', 's', 'e', 'w'] as const;
-const ResizeHandles: React.FC<ResizeHandlesProps> = ({ elementId, onResizeHandleMouseDown }) => ( <>{handles.map(handle => ( <div key={handle} data-handle={handle} className={`absolute w-2.5 h-2.5 bg-white border border-blue-600 rounded-sm cursor-${handle}-resize z-20`} style={{ left: handle.includes('w') ? '-5px' : handle.includes('e') ? 'calc(100% - 5px)' : 'calc(50% - 5px)', top: handle.includes('n') ? '-5px' : handle.includes('s') ? 'calc(100% - 5px)' : 'calc(50% - 5px)', }} onMouseDown={(e) => onResizeHandleMouseDown(e, elementId, handle)} /> ))}</> );
-
-// --- ElementComponent ---
-interface ElementComponentProps { element: SlideElement; isSelected: boolean; interactionState: InteractionState; onMouseDown: (e: React.MouseEvent, elementId: string) => void; onResizeHandleMouseDown: (e: React.MouseEvent, elementId: string, handle: string) => void; onClick: (e: React.MouseEvent, elementId: string) => void; onTextChange: (id: string, content: string) => void; onTextBlur: (id: string) => void; displayX: number; displayY: number; displayWidth: number; displayHeight: number; activeTextareaRef: React.RefObject<HTMLTextAreaElement | null>; onDeleteElement: (elementId: string) => void; }
-const ElementComponent: React.FC<ElementComponentProps> = ({ element, isSelected, interactionState, onMouseDown, onResizeHandleMouseDown, onClick, onTextChange, onTextBlur, displayX, displayY, displayWidth, displayHeight, activeTextareaRef, onDeleteElement }) => {
-  const isDraggingThis = interactionState === 'draggingElement' && isSelected; const isResizingThis = interactionState === 'resizingElement' && isSelected;
-  const handleTextChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => { onTextChange(element.id, e.target.value); };
-  const handleTextBlur = () => { onTextBlur(element.id); };
-  return (
-    <div className={cn( "absolute cursor-grab", { "cursor-grabbing": isDraggingThis }, { "select-none": isDraggingThis || isResizingThis } )} style={{ left: `${displayX}px`, top: `${displayY}px`, width: `${displayWidth}px`, height: `${displayHeight}px`, border: isSelected ? '1px solid #3b82f6' : 'none', outline: isSelected ? '1px solid rgba(255,255,255,0.7)' : 'none', zIndex: isSelected ? 10 : 1, transition: 'none', boxShadow: isSelected ? '0 0 0 1px rgba(59, 130, 246, 0.5)' : 'none', boxSizing: 'border-box', }} onClick={(e) => onClick(e, element.id)} onMouseDown={(e) => onMouseDown(e, element.id)} >
-      <div className="w-full h-full overflow-hidden relative" style={{ ...element.style, borderRadius: typeof element.style.borderRadius === 'number' ? `${element.style.borderRadius}px` : element.style.borderRadius, borderWidth: element.style.borderWidth ? `${element.style.borderWidth}px` : undefined, boxSizing: 'border-box', }} >
-        {element.type === 'text' && ( element.isEditing ? ( <textarea ref={activeTextareaRef} value={element.content || ''} onChange={handleTextChange} onBlur={handleTextBlur} onKeyDown={(e) => { if (e.key === 'Escape') e.currentTarget.blur(); }} data-element-id={element.id} className="absolute inset-0 w-full h-full resize-none border-none outline-none bg-transparent p-1 box-border m-0 leading-tight focus:ring-0" style={{ fontSize: 'inherit', fontFamily: 'inherit', color: 'inherit', fontWeight: element.style.fontWeight, fontStyle: element.style.fontStyle, textDecoration: element.style.textDecoration, textAlign: element.style.textAlign, whiteSpace: 'pre-wrap', wordWrap: 'break-word', lineHeight: '1.2' }} autoFocus spellCheck="false" onMouseDown={(e) => e.stopPropagation()} /> ) : ( <div className="w-full h-full p-1 box-border whitespace-pre-wrap break-words" style={{ fontWeight: element.style.fontWeight, fontStyle: element.style.fontStyle, textDecoration: element.style.textDecoration, textAlign: element.style.textAlign, lineHeight: '1.2', }} > {element.content || <span className="text-gray-400 italic pointer-events-none"></span>} </div> ) )}
-        {element.type === 'image' && ( element.content ? <img src={element.content} alt="" className="w-full h-full object-contain block" draggable="false" /> : <div className="w-full h-full bg-gray-100 flex items-center justify-center text-gray-400"> <ImageIcon size={24} /> </div> )}
-        {element.type === 'shape' && ( <div className="w-full h-full" style={{ backgroundColor: element.style.backgroundColor || '#ccc' }}></div> )}
-      </div>
-      {isSelected && ( <ResizeHandles elementId={element.id} onResizeHandleMouseDown={onResizeHandleMouseDown} /> )}
-      {isSelected && ( <Button variant="destructive" size="icon-xs" className="absolute -top-2 -right-2 z-20 rounded-full" onClick={(e) => { e.stopPropagation(); onDeleteElement(element.id); }} onMouseDown={(e) => e.stopPropagation()} title="Delete element"> <Trash2 size={10} /> </Button> )}
-    </div>
-  );
-};
-
-// --- CanvasArea ---
-interface CanvasAreaProps { slide: Slide | undefined; zoomLevel: number; selectedElementId: string | null; interactionState: InteractionState; onCanvasMouseDown: (e: React.MouseEvent) => void; onElementMouseDown: (e: React.MouseEvent, elementId: string) => void; onResizeHandleMouseDown: (e: React.MouseEvent, elementId: string, handle: string) => void; onElementClick: (e: React.MouseEvent, elementId: string) => void; onTextChange: (id: string, content: string) => void; onTextBlur: (id: string) => void; canvasRef: React.RefObject<HTMLDivElement | null>; activeTextareaRef: React.RefObject<HTMLTextAreaElement | null>; onDeleteElement: (elementId: string) => void; }
-const CanvasArea = React.forwardRef<HTMLDivElement, CanvasAreaProps>(({ slide, zoomLevel, selectedElementId, interactionState, onCanvasMouseDown, onElementMouseDown, onResizeHandleMouseDown, onElementClick, onTextChange, onTextBlur, canvasRef, activeTextareaRef, onDeleteElement }, ref) => (
-    // SỬA LỖI 4: Xóa 'overflow-auto'
-    <main ref={ref} className="flex-1 flex items-center justify-center p-4 bg-gray-200 relative">
-      <div ref={canvasRef} className="relative bg-white shadow-lg overflow-hidden transform origin-center" style={{ width: `${CANVAS_WIDTH}px`, height: `${CANVAS_HEIGHT}px`, backgroundColor: slide?.backgroundColor || '#ffffff', transform: `scale(${zoomLevel})`, transition: 'transform 0.1s ease-out', minWidth: `${CANVAS_WIDTH}px`, minHeight: `${CANVAS_HEIGHT}px`, }} onMouseDown={onCanvasMouseDown} >
-        {slide?.elements.map((element) => ( <ElementComponent key={element.id} element={element} isSelected={selectedElementId === element.id} interactionState={interactionState} onMouseDown={onElementMouseDown} onResizeHandleMouseDown={onResizeHandleMouseDown} onClick={onElementClick} onTextChange={onTextChange} onTextBlur={onTextBlur} displayX={element.x} displayY={element.y} displayWidth={element.width} displayHeight={element.height} activeTextareaRef={activeTextareaRef} onDeleteElement={onDeleteElement} /> ))}
-      </div>
-    </main>
-));
-CanvasArea.displayName = 'CanvasArea';
-
-// --- SlideThumbnail ---
-interface SlideThumbnailProps { slide: Slide; index: number; isCurrent: boolean; isDragged: boolean; isDropTarget: boolean; onClick: (index: number) => void; onContextMenu: (e: React.MouseEvent, index: number) => void; onMouseDown: (e: React.MouseEvent, index: number) => void; onMouseEnter: (index: number) => void; onMouseUp: (index: number) => void; }
-const SlideThumbnail: React.FC<SlideThumbnailProps> = ({ slide, index, isCurrent, isDragged, isDropTarget, onClick, onContextMenu, onMouseDown, onMouseEnter, onMouseUp }) => (
-    <div data-slide-index={index} onClick={() => onClick(index)} onContextMenu={(e) => onContextMenu(e, index)} onMouseDown={(e) => onMouseDown(e, index)} onMouseUp={() => onMouseUp(index)} onMouseEnter={() => onMouseEnter(index)} className={cn( "slide-thumbnail w-24 h-[67.5px] flex-shrink-0 bg-white border rounded shadow-sm cursor-pointer transition-all duration-150 relative overflow-hidden group select-none", isCurrent ? "border-blue-500 border-2 ring-1 ring-blue-500 ring-offset-1" : "border-gray-300 hover:border-gray-400", {"opacity-40 scale-95 cursor-grabbing": isDragged}, {"outline outline-2 outline-offset-1 outline-blue-400": isDropTarget} )} style={{ backgroundColor: slide.backgroundColor }} >
-        <div className="absolute top-0.5 left-0.5 bg-black/60 text-white text-[10px] px-1 rounded-sm font-medium">{index + 1}</div>
-        <div className="w-full h-full flex items-center justify-center text-gray-300 pointer-events-none"> {slide.elements.length === 0 && <Layers size={14} />} </div>
-        {isDragged && ( <div className="absolute inset-0 bg-black/30 backdrop-blur-sm flex items-center justify-center text-white pointer-events-none"> <Layers size={24} /> </div> )}
-    </div>
-);
-
-// --- SlideNavigator ---
-interface SlideNavigatorProps { slides: Slide[]; currentSlideIndex: number; onSlideClick: (index: number) => void; onAddSlide: () => void; onContextMenu: (e: React.MouseEvent, index: number) => void; onSlideMouseDown: (e: React.MouseEvent, index: number) => void; onSlideMouseEnter: (index: number) => void; onSlideMouseLeave: () => void; onSlideMouseUp: (index: number) => void; isDragging: boolean; draggedIndex: number | null; dropTargetIndex: number | null; }
-const SlideNavigator: React.FC<SlideNavigatorProps> = ({ slides, currentSlideIndex, onSlideClick, onAddSlide, onContextMenu, onSlideMouseDown, onSlideMouseEnter, onSlideMouseLeave, onSlideMouseUp, isDragging, draggedIndex, dropTargetIndex }) => (
-    // SỬA: Bỏ 'flex-shrink-0' và 'z-10' (Footer của SiteLayout sẽ xử lý việc này)
-    <footer className="bg-gray-100 border-t border-gray-200 px-4 py-3 overflow-x-auto">
-        <div className="flex items-center gap-3 w-max">
-            {slides.map((slide, index) => ( <SlideThumbnail key={slide.id} slide={slide} index={index} isCurrent={index === currentSlideIndex} isDragged={isDragging && draggedIndex === index} isDropTarget={isDragging && dropTargetIndex === index && draggedIndex !== index} onClick={onSlideClick} onContextMenu={onContextMenu} onMouseDown={onSlideMouseDown} onMouseEnter={onSlideMouseEnter} onMouseUp={onSlideMouseUp} /> ))}
-            <Button variant="outline" className="w-24 h-[67.5px] flex-shrink-0 border-dashed text-gray-500 hover:text-blue-600 hover:border-blue-400 flex-col" onClick={onAddSlide}> <Plus size={18} /> <span className="text-xs mt-1">Add Slide</span> </Button>
+      {/* Context Menu */}
+      {contextMenu && (
+        <div 
+          className="context-menu fixed z-50 bg-white rounded-lg shadow-lg border border-gray-200 py-2 min-w-48"
+          style={{
+            left: contextMenu.x,
+            top: contextMenu.y,
+            transform: contextMenu.y > window.innerHeight / 2 ? 'translateY(-100%)' : 'none'
+          }}
+        >
+          {/* Arrow pointer */}
+          <div 
+            className="absolute w-2 h-2 bg-white border-r border-b border-gray-200 transform rotate-45"
+            style={{
+              left: '20px',
+              bottom: contextMenu.y > window.innerHeight / 2 ? '-4px' : 'auto',
+              top: contextMenu.y > window.innerHeight / 2 ? 'auto' : '-4px'
+            }}
+          />
+          <div className="px-3 py-2 border-b border-gray-100">
+            <h3 className="text-sm font-semibold text-gray-900">Slide {contextMenu.slideIndex + 1}</h3>
+            <p className="text-xs text-gray-500">Presentation • 800 x 600 px</p>
+          </div>
+          
+          <div className="py-1">
+            <button
+              onClick={() => copySlide(contextMenu.slideIndex)}
+              className="w-full px-3 py-2 text-left text-sm text-gray-700 hover:bg-gray-100 flex items-center gap-3"
+            >
+              <Copy size={16} className="text-gray-500" />
+              Copy
+              <span className="ml-auto text-xs text-gray-400">Ctrl+C</span>
+            </button>
+            
+            <button
+              onClick={() => pasteSlide(contextMenu.slideIndex)}
+              disabled={!copiedSlide}
+              className={cn(
+                "w-full px-3 py-2 text-left text-sm flex items-center gap-3",
+                copiedSlide 
+                  ? "text-gray-700 hover:bg-gray-100" 
+                  : "text-gray-400 cursor-not-allowed"
+              )}
+            >
+              <Clipboard size={16} className="text-gray-500" />
+              Paste
+              <span className="ml-auto text-xs text-gray-400">Ctrl+V</span>
+            </button>
+            
+            <button
+              onClick={() => duplicateSlide(contextMenu.slideIndex)}
+              className="w-full px-3 py-2 text-left text-sm text-gray-700 hover:bg-gray-100 flex items-center gap-3"
+            >
+              <Copy size={16} className="text-gray-500" />
+              Duplicate page
+              <span className="ml-auto text-xs text-gray-400">Ctrl+D</span>
+            </button>
+            
+            <button
+              onClick={() => deleteSlide(contextMenu.slideIndex)}
+              className="w-full px-3 py-2 text-left text-sm text-gray-700 hover:bg-gray-100 flex items-center gap-3"
+            >
+              <Trash2 size={16} className="text-gray-500" />
+              Delete page
+              <span className="ml-auto text-xs text-gray-400">DELETE</span>
+            </button>
+          </div>
+          
+          <div className="border-t border-gray-100 py-1">
+            <button
+              onClick={() => {
+                setCurrentSlideIndex(contextMenu.slideIndex);
+                addSlide();
+                setContextMenu(null);
+              }}
+              className="w-full px-3 py-2 text-left text-sm text-gray-700 hover:bg-gray-100 flex items-center gap-3"
+            >
+              <Plus size={16} className="text-gray-500" />
+              Add page
+              <span className="ml-auto text-xs text-gray-400">Ctrl+Enter</span>
+            </button>
+          </div>
         </div>
-    </footer>
-);
+      )}
 
-// --- ContextMenu ---
-interface ContextMenuProps { x: number; y: number; slideIndex: number; canPaste: boolean; canDelete: boolean; onCopy: () => void; onPaste: () => void; onDuplicate: () => void; onDelete: () => void; onAddSlide: () => void; onClose: () => void; }
-const ContextMenu: React.FC<ContextMenuProps> = ({ x, y, slideIndex, canPaste, canDelete, onCopy, onPaste, onDuplicate, onDelete, onAddSlide, onClose }) => (
-    <div className="context-menu fixed z-50 bg-white rounded shadow-lg border border-gray-200 py-1 w-40 text-sm animate-in fade-in zoom-in-95" style={{ left: x, top: y }} onContextMenu={(e) => e.preventDefault()} onClick={onClose} >
-        <div className="px-2 py-1 text-xs text-gray-500 border-b mb-1">Slide {slideIndex + 1}</div>
-        <Button variant="ghost" className="w-full justify-start h-8 px-2 text-sm" onClick={onCopy}> <Copy size={14} className="mr-2"/> Copy <span className="ml-auto text-gray-400 text-xs">Ctrl+C</span> </Button>
-        <Button variant="ghost" className="w-full justify-start h-8 px-2 text-sm" onClick={onPaste} disabled={!canPaste}> <Clipboard size={14} className="mr-2"/> Paste <span className="ml-auto text-gray-400 text-xs">Ctrl+V</span> </Button>
-        <Button variant="ghost" className="w-full justify-start h-8 px-2 text-sm" onClick={onDuplicate}> <Copy size={14} className="mr-2"/> Duplicate <span className="ml-auto text-gray-400 text-xs">Ctrl+D</span> </Button>
-        <Button variant="ghost" className="w-full justify-start h-8 px-2 text-sm text-red-600 hover:text-red-700 hover:bg-red-50 disabled:text-gray-400 disabled:hover:bg-transparent" onClick={onDelete} disabled={!canDelete}> <Trash2 size={14} className="mr-2"/> Delete <span className="ml-auto text-gray-400 text-xs">Del</span> </Button>
-        <div className="border-t my-1 mx-2"></div>
-        <Button variant="ghost" className="w-full justify-start h-8 px-2 text-sm" onClick={onAddSlide}> <Plus size={14} className="mr-2"/> Add Slide </Button>
-    </div>
-);
-
-// --- SaveDialog ---
-interface SaveDialogProps { isOpen: boolean; onClose: () => void; saveOptions: SaveOptions; onSaveOptionsChange: (newOptions: SaveOptions) => void; onSave: () => void; isSaving: boolean; }
-const SaveDialog: React.FC<SaveDialogProps> = ({ isOpen, onClose, saveOptions, onSaveOptionsChange, onSave, isSaving }) => (
-    <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-md">
-        <DialogHeader>
-          <DialogTitle>Save Presentation</DialogTitle>
-          <DialogDescription> Enter details for your presentation. It will be saved as a draft. </DialogDescription>
-        </DialogHeader>
-        <div className="grid gap-4 py-4">
-          <div className="grid grid-cols-4 items-center gap-4"> <Label htmlFor="title" className="text-right text-sm">Title *</Label> <Input id="title" value={saveOptions.title} onChange={e => onSaveOptionsChange({ ...saveOptions, title: e.target.value })} className="col-span-3 h-9" placeholder="Presentation Title" /> </div>
-          <div className="grid grid-cols-4 items-center gap-4"> <Label htmlFor="topic" className="text-right text-sm">Topic *</Label> <Input id="topic" value={saveOptions.topic} onChange={e => onSaveOptionsChange({ ...saveOptions, topic: e.target.value })} className="col-span-3 h-9" placeholder="e.g., Algebra Basics" /> </div>
-          <div className="grid grid-cols-4 items-center gap-4"> <Label htmlFor="price" className="text-right text-sm">Price ($)</Label> <Input id="price" type="number" value={saveOptions.price} onChange={e => onSaveOptionsChange({ ...saveOptions, price: Number(e.target.value) || 0 })} className="col-span-3 h-9" min="0" step="0.01" /> </div>
-          <div className="grid grid-cols-4 items-center gap-4"> <Label htmlFor="grade" className="text-right text-sm">Grade</Label> <Input id="grade" type="number" value={saveOptions.grade ?? ''} onChange={e => onSaveOptionsChange({ ...saveOptions, grade: e.target.value ? Number(e.target.value) : undefined })} className="col-span-3 h-9" min="1" max="12" placeholder="1-12 (Optional)" /> </div>
-        </div>
-        <DialogFooter> <Button variant="outline" onClick={onClose}>Cancel</Button> <Button onClick={onSave} disabled={isSaving || !saveOptions.title || !saveOptions.topic}> {isSaving ? 'Saving...' : 'Save'} </Button> </DialogFooter>
-      </DialogContent>
-    </Dialog>
-);
-
-
-// --- 2. COMPONENT CHÍNH (Create) ---
-export default function Create() {
-    // --- Refs ---
-    const canvasContainerRef = useRef<HTMLDivElement>(null);
-    const canvasRef = useRef<HTMLDivElement | null>(null);
-    const activeTextareaRef = useRef<HTMLTextAreaElement | null>(null);
-
-    // --- State ---
-    const [slides, setSlides] = useState<Slide[]>(INITIAL_SLIDES);
-    const [currentSlideIndex, setCurrentSlideIndex] = useState(0);
-    const [selectedElementId, setSelectedElementId] = useState<string | null>(null);
-    const [activeSidebarTab, setActiveSidebarTab] = useState<SidebarTab>('elements');
-    const [isSidebarOpen, setIsSidebarOpen] = useState(true);
-    const [history, setHistory] = useState<Slide[][]>([INITIAL_SLIDES]);
-    const [historyIndex, setHistoryIndex] = useState(0);
-    const [interactionState, setInteractionState] = useState<InteractionState>('idle');
-    const [dragResizeInfo, setDragResizeInfo] = useState<DragResizeInfo | null>(null);
-    const [showTextToolbar, setShowTextToolbar] = useState(false);
-    const [contextMenu, setContextMenu] = useState<{ x: number; y: number; slideIndex: number } | null>(null);
-    const [copiedSlide, setCopiedSlide] = useState<Slide | null>(null);
-    const [isDraggingSlideThumb, setIsDraggingSlideThumb] = useState(false);
-    const [draggedSlideIndex, setDraggedSlideIndex] = useState<number | null>(null);
-    const [dropTargetIndex, setDropTargetIndex] = useState<number | null>(null);
-    const [showSaveDialog, setShowSaveDialog] = useState(false);
-    const [saveOptions, setSaveOptions] = useState<SaveOptions>({ title: '', topic: '', price: 0, grade: undefined });
-    const [zoomLevel, setZoomLevel] = useState(1);
-
-    // --- Derived State ---
-    const currentSlide = slides[currentSlideIndex];
-    const selectedElement = currentSlide?.elements.find(el => el.id === selectedElementId);
-    const createSlideMutation = useCreateSlideMutation();
-    const canUndo = historyIndex > 0;
-    const canRedo = historyIndex < history.length - 1;
-
-    // --- SỬA LỖI 2: DI CHUYỂN TẤT CẢ CÁC HÀM LÊN ĐẦU ---
-
-    // --- Core Logic Callbacks ---
-    const updateSlides = useCallback((newSlides: Slide[], options?: { saveHistory?: boolean, newIndex?: number }) => {
-        const { saveHistory = true, newIndex } = options || {};
-        setSlides(newSlides);
-        if (saveHistory) {
-            const historyCopy = newSlides.map(s => ({ ...s, elements: s.elements.map(e => ({ ...e, style: { ...e.style } })) }));
-            const nextHistory = history.slice(0, historyIndex + 1); nextHistory.push(historyCopy);
-            setHistory(nextHistory); setHistoryIndex(nextHistory.length - 1);
-        }
-        if (newIndex !== undefined) {
-            const clampedIndex = Math.max(0, Math.min(newIndex, newSlides.length - 1));
-            if (currentSlideIndex !== clampedIndex) { setCurrentSlideIndex(clampedIndex); setSelectedElementId(null); setShowTextToolbar(false); }
-        }
-    }, [history, historyIndex, currentSlideIndex]);
-
-    const updateElement = useCallback((elementId: string, updates: Partial<SlideElement>, saveHistoryNow = false) => {
-        const newSlides = slides.map((s, i) => i === currentSlideIndex ? { ...s, elements: s.elements.map(el => el.id === elementId ? { ...el, ...updates, style: { ...el.style, ...updates.style } } : el ) } : s );
-        if (saveHistoryNow || interactionState === 'idle') updateSlides(newSlides, { saveHistory: true }); else setSlides(newSlides);
-    }, [slides, currentSlideIndex, updateSlides, interactionState]);
-
-    const handleTextEditEnd = useCallback((elementId: string) => {
-        const newSlides = slides.map((s, i) => i === currentSlideIndex ? { ...s, elements: s.elements.map(el => el.id === elementId ? { ...el, isEditing: false } : el ) } : s );
-        updateSlides(newSlides, {saveHistory: true});
-        setShowTextToolbar(selectedElementId === elementId);
-    }, [slides, currentSlideIndex, updateSlides, selectedElementId]);
-
-    const getCurrentTextElement = useCallback(() => currentSlide?.elements.find(el => el.id === selectedElementId && el.type === 'text'), [currentSlide, selectedElementId]);
-
-    const updateTextStyle = useCallback((property: keyof SlideElementStyle, value: any) => {
-        if (!selectedElementId) return;
-        const currentElement = getCurrentTextElement(); if (!currentElement) return; let newValue = value;
-        if (['fontWeight', 'fontStyle', 'textDecoration'].includes(property)) { const currentVal = currentElement.style?.[property as keyof typeof currentElement.style]; const normalVal = property === 'fontWeight' ? 'normal' : property === 'fontStyle' ? 'normal' : 'none'; const activeVal = property === 'fontWeight' ? 'bold' : property === 'fontStyle' ? 'italic' : 'underline'; newValue = currentVal === activeVal ? normalVal : activeVal; }
-        const newSlides = slides.map((s, i) => i === currentSlideIndex ? { ...s, elements: s.elements.map(el => el.id === selectedElementId ? { ...el, style: { ...el.style, [property]: newValue } } : el ) } : s );
-        setSlides(newSlides);
-        requestAnimationFrame(() => updateSlides(newSlides, { saveHistory: true }));
-        activeTextareaRef.current?.focus();
-    }, [selectedElementId, slides, currentSlideIndex, updateSlides, getCurrentTextElement]);
-
-     const handleListToggle = useCallback(() => {
-         if (!selectedElementId) return;
-         const currentElement = getCurrentTextElement(); if (!currentElement || currentElement.type !== 'text') return;
-         const currentContent = currentElement.content || ''; const lines = currentContent.split('\n'); const isBulleted = lines.some(line => line.trim().startsWith('• '));
-         const newContent = lines.map((line: string) => { const trimmedLine = line.trim(); if (!trimmedLine) return line; return isBulleted ? trimmedLine.startsWith('• ') ? trimmedLine.substring(2) : line : `• ${trimmedLine}`; }).join('\n');
-         updateElement(selectedElementId, { content: newContent }, true);
-     }, [selectedElementId, getCurrentTextElement, updateElement]);
-
-    const handleZoom = useCallback((newZoomLevel: number) => { const clampedZoom = Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, newZoomLevel)); setZoomLevel(clampedZoom); }, []);
-    const undo = useCallback(() => { if (canUndo) { const prevIndex = historyIndex - 1; setHistoryIndex(prevIndex); const prevSlides = history[prevIndex]; updateSlides(prevSlides, { saveHistory: false, newIndex: currentSlideIndex >= prevSlides.length ? Math.max(0, prevSlides.length - 1) : currentSlideIndex }); setSelectedElementId(null); } }, [canUndo, historyIndex, history, updateSlides, currentSlideIndex]);
-    const redo = useCallback(() => { if (canRedo) { const nextIndex = historyIndex + 1; setHistoryIndex(nextIndex); const nextSlides = history[nextIndex]; updateSlides(nextSlides, { saveHistory: false, newIndex: currentSlideIndex >= nextSlides.length ? Math.max(0, nextSlides.length - 1) : currentSlideIndex }); setSelectedElementId(null); } }, [canRedo, historyIndex, history, updateSlides, currentSlideIndex]);
-
-    const addElement = useCallback((type: SlideElement['type']) => {
-        let newElementData: Partial<SlideElement> = {}; const commonStyle: SlideElementStyle = { fontSize: 16, fontFamily: 'Arial', color: '#000000', textAlign: 'left', opacity: 1 };
-        let width = 100; let height = 100;
-        switch (type) { case 'text': newElementData = { content: 'Text', style: { ...commonStyle, fontSize: 16 }, isEditing: true }; width = 200; height = 50; break; case 'image': newElementData = { style: { ...commonStyle, backgroundColor: '#e5e7eb' } }; width = 150; height = 150; break; case 'shape': newElementData = { style: { ...commonStyle, backgroundColor: '#3b82f6' } }; width = 100; height = 100; break; default: return; }
-        const newElement: SlideElement = { id: `el-${Date.now()}-${Math.random().toString(16).slice(2)}`, type, x: 50, y: 50, width, height, ...newElementData, style: { ...commonStyle, ...newElementData.style }, };
-        const newSlides = slides.map((s, i) => i === currentSlideIndex ? { ...s, elements: [...s.elements, newElement] } : s); updateSlides(newSlides, { saveHistory: true }); setSelectedElementId(newElement.id); setShowTextToolbar(type === 'text');
-    }, [slides, currentSlideIndex, updateSlides]);
-
-    const deleteElement = useCallback((elementId: string) => { const newSlides = slides.map((s, i) => i === currentSlideIndex ? { ...s, elements: s.elements.filter(el => el.id !== elementId) } : s); updateSlides(newSlides, { saveHistory: true }); setSelectedElementId(null); setShowTextToolbar(false); }, [slides, currentSlideIndex, updateSlides]);
-
-    const addSlide = useCallback((index?: number) => { const newSlide: Slide = { id: `slide-${Date.now()}`, elements: [], backgroundColor: '#ffffff' }; const insertIndex = index !== undefined ? index + 1 : slides.length; const newSlides = [...slides]; newSlides.splice(insertIndex, 0, newSlide); updateSlides(newSlides, { saveHistory: true, newIndex: insertIndex }); }, [slides, updateSlides]);
-    const duplicateSlide = useCallback((slideIndex: number) => { const slideToDuplicate = slides[slideIndex]; const duplicatedSlide: Slide = { ...JSON.parse(JSON.stringify(slideToDuplicate)), id: `slide-${Date.now()}`, elements: slideToDuplicate.elements.map((el: SlideElement) => ({ ...el, id: `element-${Date.now()}-${Math.random().toString(16).slice(2)}` })) }; const insertIndex = slideIndex + 1; const newSlides = [...slides]; newSlides.splice(insertIndex, 0, duplicatedSlide); updateSlides(newSlides, { saveHistory: true, newIndex: insertIndex }); setContextMenu(null); }, [slides, updateSlides]);
-    const deleteSlide = useCallback((slideIndex: number) => { if (slides.length <= 1) return; const newSlides = slides.filter((_, index) => index !== slideIndex); let newCurrentIndex = currentSlideIndex; if (currentSlideIndex === slideIndex) newCurrentIndex = Math.max(0, slideIndex - 1); else if (currentSlideIndex > slideIndex) newCurrentIndex = currentSlideIndex - 1; updateSlides(newSlides, { saveHistory: true, newIndex: newCurrentIndex }); setContextMenu(null); }, [slides, currentSlideIndex, updateSlides]);
-    const copySlide = useCallback((slideIndex: number) => { setCopiedSlide(JSON.parse(JSON.stringify(slides[slideIndex]))); setContextMenu(null); }, [slides]);
-    const pasteSlide = useCallback((slideIndex: number) => { if (!copiedSlide) return; const pastedSlide: Slide = { ...JSON.parse(JSON.stringify(copiedSlide)), id: `slide-${Date.now()}`, elements: copiedSlide.elements.map((el: SlideElement) => ({ ...el, id: `element-${Date.now()}-${Math.random().toString(16).slice(2)}` })) }; const insertIndex = slideIndex + 1; const newSlides = [...slides]; newSlides.splice(insertIndex, 0, pastedSlide); updateSlides(newSlides, { saveHistory: true, newIndex: insertIndex }); setContextMenu(null); }, [slides, copiedSlide, updateSlides]);
-    const handleFileUpload = useCallback((files: FileList | null) => { if (files && files.length > 0) { const file = files[0]; if (file.type.startsWith('image/') && file.size <= 10*1024*1024) { const reader = new FileReader(); reader.onload = (event) => { const dataUrl = event.target?.result as string; if (dataUrl) { const newImageElement: SlideElement = { id: `el-${Date.now()}-${Math.random().toString(16).slice(2)}`, type: 'image', x: 50, y: 50, width: 200, height: 150, content: dataUrl, style: {} }; const newSlides = slides.map((s, i) => i === currentSlideIndex ? { ...s, elements: [...s.elements, newImageElement] } : s ); updateSlides(newSlides, { saveHistory: true }); setSelectedElementId(newImageElement.id); } else alert('Failed to read image file.'); }; reader.onerror = () => alert(`Error reading file: ${reader.error?.message}`); reader.readAsDataURL(file); } else if (file.size > 10*1024*1024) alert('File size exceeds 10MB limit.'); else alert('Please select a valid image file.'); } }, [slides, currentSlideIndex, updateSlides]);
-
-    // --- Interaction Handlers ---
-    const handleCanvasMouseDown = (e: React.MouseEvent) => { if (e.target === canvasRef.current) { setSelectedElementId(null); setShowTextToolbar(false); const editingElement = currentSlide?.elements.find(el => el.isEditing); if (editingElement) { activeTextareaRef.current?.blur(); } } };
-    const handleElementClick = (e: React.MouseEvent, elementId: string) => { e.stopPropagation(); setSelectedElementId(elementId); const element = currentSlide.elements.find(el => el.id === elementId); setShowTextToolbar(element?.type === 'text'); if (element?.type === 'text' && !element.isEditing) { const newSlides = slides.map((s, i) => i === currentSlideIndex ? { ...s, elements: s.elements.map(el => el.id === elementId ? { ...el, isEditing: true } : el ) } : s ); setSlides(newSlides); } };
-    const handleElementMouseDown = (e: React.MouseEvent, elementId: string) => { e.stopPropagation(); const element = currentSlide.elements.find(el => el.id === elementId); if (!element || (element.isEditing && (e.target as HTMLElement).tagName === 'TEXTAREA')) return; setSelectedElementId(elementId); setShowTextToolbar(element.type === 'text'); setInteractionState('draggingElement'); const canvasRect = canvasRef.current?.getBoundingClientRect(); if (canvasRect) { const startX = (e.clientX - canvasRect.left) / zoomLevel; const startY = (e.clientY - canvasRect.top) / zoomLevel; setDragResizeInfo({ startX, startY, initialX: element.x, initialY: element.y }); document.body.style.cursor = 'grabbing'; } };
-    const handleResizeHandleMouseDown = (e: React.MouseEvent, elementId: string, handle: string) => { e.preventDefault(); e.stopPropagation(); const element = currentSlide.elements.find(el => el.id === elementId); if (!element) return; setSelectedElementId(elementId); setInteractionState('resizingElement'); const canvasRect = canvasRef.current?.getBoundingClientRect(); if (canvasRect) { const startX = (e.clientX - canvasRect.left) / zoomLevel; const startY = (e.clientY - canvasRect.top) / zoomLevel; setDragResizeInfo({ startX, startY, initialX: element.x, initialY: element.y, initialW: element.width, initialH: element.height, handle }); document.body.style.cursor = `${handle}-resize`; } };
-
-    const handleGlobalMouseMove = useCallback((e: MouseEvent) => {
-        if (interactionState === 'idle' || !dragResizeInfo || !selectedElementId) return;
-        const canvasRect = canvasRef.current?.getBoundingClientRect(); if (!canvasRect) return;
-        const currentX = (e.clientX - canvasRect.left) / zoomLevel; const currentY = (e.clientY - canvasRect.top) / zoomLevel;
-        const { startX, startY, initialX, initialY, initialW, initialH, handle } = dragResizeInfo;
-        const deltaX = currentX - startX; const deltaY = currentY - startY;
-
-        if (interactionState === 'draggingElement') {
-            const newX = initialX + deltaX; const newY = initialY + deltaY; const element = currentSlide.elements.find(el => el.id === selectedElementId); if (!element) return; const constrainedX = Math.max(0, Math.min(newX, CANVAS_WIDTH - element.width)); const constrainedY = Math.max(0, Math.min(newY, CANVAS_HEIGHT - element.height));
-            updateElement(selectedElementId, { x: constrainedX, y: constrainedY }, false);
-        } else if (interactionState === 'resizingElement' && handle && initialW !== undefined && initialH !== undefined) {
-            let newElementX = initialX, newElementY = initialY, newElementW = initialW, newElementH = initialH;
-            if (handle.includes('e')) newElementW = Math.max(MIN_ELEMENT_WIDTH, initialW + deltaX); if (handle.includes('s')) newElementH = Math.max(MIN_ELEMENT_HEIGHT, initialH + deltaY); if (handle.includes('w')) { const widthChange = initialW - deltaX; newElementW = Math.max(MIN_ELEMENT_WIDTH, widthChange); newElementX = initialX + (initialW - newElementW); } if (handle.includes('n')) { const heightChange = initialH - deltaY; newElementH = Math.max(MIN_ELEMENT_HEIGHT, heightChange); newElementY = initialY + (initialH - newElementH); }
-            updateElement(selectedElementId, { x: newElementX, y: newElementY, width: newElementW, height: newElementH }, false);
-        }
-    }, [interactionState, selectedElementId, dragResizeInfo, zoomLevel, currentSlide, updateElement]);
-
-    const handleGlobalMouseUp = useCallback(() => {
-        if (interactionState !== 'idle') { document.body.style.cursor = ''; if (slides !== history[historyIndex]) { updateSlides(slides, { saveHistory: true }); } setInteractionState('idle'); setDragResizeInfo(null); }
-        if (isDraggingSlideThumb) { document.body.style.cursor = ''; setIsDraggingSlideThumb(false); if (draggedSlideIndex !== null && dropTargetIndex !== null && draggedSlideIndex !== dropTargetIndex) { const newSlides = [...slides]; const [draggedItem] = newSlides.splice(draggedSlideIndex, 1); const actualDropIndex = draggedSlideIndex < dropTargetIndex ? dropTargetIndex -1 : dropTargetIndex; newSlides.splice(actualDropIndex, 0, draggedItem); let newCurrentIndex = currentSlideIndex; if (currentSlideIndex === draggedSlideIndex) newCurrentIndex = actualDropIndex; else if (draggedSlideIndex < currentSlideIndex && actualDropIndex >= currentSlideIndex) newCurrentIndex--; else if (draggedSlideIndex > currentSlideIndex && actualDropIndex <= currentSlideIndex) newCurrentIndex++; updateSlides(newSlides, { saveHistory: true, newIndex: newCurrentIndex }); } setDraggedSlideIndex(null); setDropTargetIndex(null); }
-    }, [interactionState, slides, history, historyIndex, updateSlides, isDraggingSlideThumb, draggedSlideIndex, dropTargetIndex, currentSlideIndex]);
-
-    // --- Slide Thumb Callbacks ---
-    const handleSlideThumbContextMenu = (e: React.MouseEvent, slideIndex: number) => { e.preventDefault(); e.stopPropagation(); const rect = e.currentTarget.getBoundingClientRect(); let y = rect.bottom + 5; let x = e.clientX; const menuHeight = 200; const menuWidth = 160; if (y + menuHeight > window.innerHeight) y = rect.top - menuHeight - 5; if (x + menuWidth > window.innerWidth) x = window.innerWidth - menuWidth - 10; setContextMenu({ x: Math.max(0, x), y: Math.max(0, y), slideIndex }); };
-    const handleSlideThumbClick = (slideIndex: number) => { if (slideIndex !== currentSlideIndex) { setCurrentSlideIndex(slideIndex); setSelectedElementId(null); setShowTextToolbar(false); } setContextMenu(null); };
-    const handleSlideThumbMouseDown = (e: React.MouseEvent, slideIndex: number) => { if (e.button !== 0) return; e.preventDefault(); setIsDraggingSlideThumb(true); setDraggedSlideIndex(slideIndex); setDropTargetIndex(slideIndex); document.body.style.cursor = 'grabbing'; };
-    const handleSlideThumbMouseEnter = (targetIndex: number) => { if (isDraggingSlideThumb) setDropTargetIndex(targetIndex); };
-    const handleSlideThumbContainerMouseLeave = () => { if (isDraggingSlideThumb) setDropTargetIndex(null); }
-    const handleSlideThumbMouseUp = (index: number) => { if (isDraggingSlideThumb) { handleGlobalMouseUp(); } else { handleSlideThumbClick(index); } };
-
-    // --- Save & Export ---
-    const exportToPowerPoint = () => { if (slides.length === 0) return; try { const pptx = new PptxGenJS(); pptx.layout = 'LAYOUT_16x9'; pptx.author = 'MathSlide Creator'; pptx.title = saveOptions.title || 'Untitled MathSlide'; slides.forEach((slide) => { const pptxSlide = pptx.addSlide(); pptxSlide.background = { color: slide.backgroundColor.replace('#', '') }; slide.elements.forEach((element) => { const inchX=element.x/96, inchY=element.y/96, inchW=element.width/96, inchH=element.height/96; const baseProps = { x: inchX, y: inchY, w: inchW, h: inchH }; const cleanColor = (c?:string)=>c?.replace('#','')||'000000'; if(element.type==='text') pptxSlide.addText(element.content||'', {...baseProps, fontSize:element.style?.fontSize||16, color:cleanColor(element.style?.color), fontFace:element.style?.fontFamily||'Arial', bold:element.style?.fontWeight==='bold', italic:element.style?.fontStyle==='italic', underline:element.style?.textDecoration==='underline'?{ style: 'sng' }:undefined, align:element.style?.textAlign||'left', valign:'middle', margin:0}); else if(element.type==='image' && element.content?.startsWith('data:image')) pptxSlide.addImage({...baseProps, data:element.content}); else if(element.type==='shape') pptxSlide.addShape(pptx.ShapeType.rect, {...baseProps, fill:{color:cleanColor(element.style?.backgroundColor)}}); }); }); const fileName = (saveOptions.title || 'MathSlide_Presentation') + '.pptx'; pptx.writeFile({ fileName }); } catch (error) { console.error('Error exporting PowerPoint:', error); alert('Failed to export PowerPoint file.'); } };
-    const handleSave = async () => { if (!saveOptions.title.trim() || !saveOptions.topic.trim() || saveOptions.price < 0 || (saveOptions.grade && (saveOptions.grade < 1 || saveOptions.grade > 12))) { alert('Invalid save options.'); return; } if (slides.length === 0) { alert('Empty presentation.'); return; } try { const presentationData = { title: saveOptions.title, topic: saveOptions.topic, price: saveOptions.price, grade: saveOptions.grade, isPublished: false, slidePages: slides.map((slide, index) => ({ orderNumber: index + 1, title: `Slide ${index + 1}`, content: JSON.stringify({ elements: slide.elements, backgroundColor: slide.backgroundColor }) })) }; const pptx = new PptxGenJS(); slides.forEach((slide) => { const pptxSlide = pptx.addSlide(); pptxSlide.background = { color: slide.backgroundColor.replace('#', '') }; slide.elements.forEach((element) => { const inchX=element.x/96, inchY=element.y/96, inchW=element.width/96, inchH=element.height/96; const baseProps = { x: inchX, y: inchY, w: inchW, h: inchH }; const cleanColor = (c?:string)=>c?.replace('#','')||'000000'; if(element.type==='text') pptxSlide.addText(element.content||'', {...baseProps, fontSize:element.style?.fontSize||16, color:cleanColor(element.style?.color), fontFace:element.style?.fontFamily||'Arial', bold:element.style?.fontWeight==='bold', italic:element.style?.fontStyle==='italic', underline:element.style?.textDecoration==='underline'?{style:'sng'}:undefined, align:element.style?.textAlign||'left', valign:'middle', margin:0}); else if(element.type==='image' && element.content?.startsWith('data:image')) pptxSlide.addImage({...baseProps, data:element.content}); else if(element.type==='shape') pptxSlide.addShape(pptx.ShapeType.rect, {...baseProps, fill:{color:cleanColor(element.style?.backgroundColor)}}); }); }); const blob = await pptx.write({ outputType: 'blob' }) as Blob; const file = new File([blob], `${saveOptions.title.replace(/[^a-z0-9]/gi, '_')}.pptx`, { type: 'application/vnd.openxmlformats-officedocument.presentationml.presentation' }); await createSlideMutation.mutateAsync({ slideDto: presentationData, file }); alert(`Presentation "${saveOptions.title}" saved!`); setShowSaveDialog(false); } catch (error) { console.error('Failed to save:', error); alert('Failed to save presentation.'); } };
-
-    // --- Effects ---
-    // Keyboard Shortcuts
-    useEffect(() => { const handleKeyDown = (e: KeyboardEvent) => { if (showSaveDialog || ['INPUT', 'TEXTAREA'].includes((e.target as HTMLElement).tagName)) return; const isCtrlOrMeta = e.ctrlKey || e.metaKey; const key = e.key.toLowerCase(); if ((key === 'delete' || key === 'backspace') && selectedElementId) { e.preventDefault(); deleteElement(selectedElementId); } else if ((key === 'delete' || key === 'backspace') && slides.length > 1) { e.preventDefault(); deleteSlide(currentSlideIndex); } else if (key === 'escape') { setContextMenu(null); setSelectedElementId(null); setShowTextToolbar(false); } else if (isCtrlOrMeta) { switch (key) { case 'z': e.preventDefault(); undo(); break; case 'y': e.preventDefault(); redo(); break; case 'c': if (!selectedElementId) { e.preventDefault(); copySlide(currentSlideIndex); } break; case 'v': if (copiedSlide && !selectedElementId) { e.preventDefault(); pasteSlide(currentSlideIndex); } break; case 'd': if (!selectedElementId) { e.preventDefault(); duplicateSlide(currentSlideIndex); } break; case 's': e.preventDefault(); setShowSaveDialog(true); break; case '=': case '+': e.preventDefault(); handleZoom(zoomLevel + ZOOM_STEP); break; case '-': e.preventDefault(); handleZoom(zoomLevel - ZOOM_STEP); break; case '0': e.preventDefault(); handleZoom(1); break; } } else if (e.shiftKey && isCtrlOrMeta && key === 'z') { e.preventDefault(); redo(); } }; document.addEventListener('keydown', handleKeyDown); return () => document.removeEventListener('keydown', handleKeyDown); }, [selectedElementId, currentSlideIndex, slides, copiedSlide, showSaveDialog, undo, redo, zoomLevel, deleteElement, deleteSlide, copySlide, pasteSlide, duplicateSlide, handleZoom]);
-    // Context Menu closing
-    useEffect(() => { const handleClickOutside = (e: MouseEvent) => { if (contextMenu && !(e.target as Element).closest('.context-menu')) setContextMenu(null); }; document.addEventListener('click', handleClickOutside); return () => document.removeEventListener('click', handleClickOutside); }, [contextMenu]);
-    // Global mouse up for slide dragging
-    useEffect(() => { const handleGlobalMouseUp = () => { if (isDraggingSlideThumb) { document.body.style.cursor = ''; setIsDraggingSlideThumb(false); setDraggedSlideIndex(null); setDropTargetIndex(null); } }; document.addEventListener('mouseup', handleGlobalMouseUp); return () => document.removeEventListener('mouseup', handleGlobalMouseUp); }, [isDraggingSlideThumb]);
-    // Global mouse move/up for element drag/resize
-    useEffect(() => { if (interactionState !== 'idle') { document.addEventListener('mousemove', handleGlobalMouseMove); document.addEventListener('mouseup', handleGlobalMouseUp); return () => { document.removeEventListener('mousemove', handleGlobalMouseMove); document.removeEventListener('mouseup', handleGlobalMouseUp); document.body.style.cursor = ''; }; } }, [interactionState, handleGlobalMouseMove, handleGlobalMouseUp]);
-
-
-    // --- Render ---
-    // SỬA LỖI 4: Tính toán vị trí sticky cho sidebar
-    // NavBar (h-12 = 3rem) + TopToolbar (h-14 = 3.5rem)
-    const toolbarHeight = "calc(3rem + 3.5rem)"; // 6.5rem
-    // Nếu TextFormatToolbar hiển thị (h-12 = 3rem), tổng chiều cao là 9.5rem
-    const totalStickyTop = showTextToolbar ? "calc(3rem + 3.5rem + 3rem)" : "calc(3rem + 3.5rem)";
-
-    return (
-        // SỬA LỖI 1 & 2: Xóa h-screen, thêm pt-12
-        <div className="pt-12 bg-gray-100 select-none">
-            <TopToolbar
-                canUndo={canUndo} onUndo={undo} canRedo={canRedo} onRedo={redo}
-                zoomLevel={zoomLevel} onZoomIn={() => handleZoom(zoomLevel + ZOOM_STEP)} onZoomOut={() => handleZoom(zoomLevel - ZOOM_STEP)} onZoomReset={() => handleZoom(1)}
-                onExport={exportToPowerPoint} onSave={() => setShowSaveDialog(true)}
-                minZoom={MIN_ZOOM} maxZoom={MAX_ZOOM}
-            />
-
-            {showTextToolbar && selectedElement && (
-                <TextFormatToolbar
-                    element={selectedElement}
-                    onStyleChange={updateTextStyle}
-                    onListToggle={handleListToggle}
-                    textAreaRef={activeTextareaRef}
+      {/* Save Dialog */}
+      {showSaveDialog && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-30 backdrop-blur-sm">
+          <div className="bg-white rounded-lg p-6 w-full max-w-md">
+            <h2 className="text-xl font-bold mb-4">Save to Cloud</h2>
+            <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+              <p className="text-sm text-blue-800">
+                <strong>Total Slides:</strong> {slides.length} | 
+                <strong> Total Elements:</strong> {slides.reduce((sum, slide) => sum + slide.elements.length, 0)}
+              </p>
+              <p className="text-xs text-blue-600 mt-1">
+                💡 This will save your presentation to the cloud database. Use "Export PPTX" to download a PowerPoint file.
+              </p>
+            </div>
+            
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Presentation Title *
+                </label>
+                <input
+                  type="text"
+                  value={slideTitle}
+                  onChange={(e) => setSlideTitle(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="Enter presentation title"
                 />
-            )}
+              </div>
 
-            {/* SỬA LỖI 4: Xóa flex-1 và overflow-hidden */}
-            <div className="flex flex-row">
-                <Sidebar
-                    activeTab={activeSidebarTab} setActiveTab={setActiveSidebarTab}
-                    isOpen={isSidebarOpen} setIsOpen={setIsSidebarOpen}
-                    onAddElement={addElement} onFileUpload={handleFileUpload}
-                    stickyTop={totalStickyTop} // SỬA: Truyền vị trí sticky
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Subject/Topic *
+                </label>
+                <input
+                  type="text"
+                  value={slideTopic}
+                  onChange={(e) => setSlideTopic(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="e.g., Algebra, Geometry, Calculus"
                 />
+              </div>
 
-                <CanvasArea
-                    ref={canvasContainerRef} canvasRef={canvasRef}
-                    slide={currentSlide} zoomLevel={zoomLevel}
-                    selectedElementId={selectedElementId}
-                    interactionState={interactionState}
-                    onCanvasMouseDown={handleCanvasMouseDown}
-                    onElementMouseDown={handleElementMouseDown}
-                    onResizeHandleMouseDown={handleResizeHandleMouseDown}
-                    onElementClick={handleElementClick}
-                    onTextChange={(id, content) => updateElement(id, { content }, false)}
-                    onTextBlur={handleTextEditEnd}
-                    activeTextareaRef={activeTextareaRef}
-                    onDeleteElement={deleteElement} 
-                />
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Price ($)
+                  </label>
+                  <input
+                    type="number"
+                    value={slidePrice}
+                    onChange={(e) => setSlidePrice(Number(e.target.value))}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    min="0"
+                    step="0.01"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Grade
+                  </label>
+                  <input
+                    type="number"
+                    value={slideGrade || ''}
+                    onChange={(e) => setSlideGrade(e.target.value ? Number(e.target.value) : undefined)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="Optional"
+                  />
+                </div>
+              </div>
+
+              <div className="bg-blue-50 border border-blue-200 rounded-md p-3">
+                <p className="text-sm text-blue-700">
+                  This will save your slide as a draft. You can publish it later from your slides page.
+                </p>
+              </div>
             </div>
 
-            <SlideNavigator
-                slides={slides} currentSlideIndex={currentSlideIndex}
-                onSlideClick={handleSlideThumbClick} onAddSlide={addSlide}
-                onContextMenu={handleSlideThumbContextMenu}
-                onSlideMouseDown={handleSlideThumbMouseDown}
-                onSlideMouseEnter={handleSlideThumbMouseEnter}
-                onSlideMouseLeave={handleSlideThumbContainerMouseLeave}
-                onSlideMouseUp={handleSlideThumbMouseUp}
-                isDragging={isDraggingSlideThumb} draggedIndex={draggedSlideIndex}
-                dropTargetIndex={dropTargetIndex}
-            />
-
-            {contextMenu && ( <ContextMenu x={contextMenu.x} y={contextMenu.y} slideIndex={contextMenu.slideIndex} canPaste={!!copiedSlide} onCopy={() => copySlide(contextMenu.slideIndex)} onPaste={() => pasteSlide(contextMenu.slideIndex)} onDuplicate={() => duplicateSlide(contextMenu.slideIndex)} onDelete={() => deleteSlide(contextMenu.slideIndex)} onAddSlide={() => { addSlide(contextMenu.slideIndex); setContextMenu(null); }} onClose={() => setContextMenu(null)} canDelete={slides.length > 1} /> )}
-            <SaveDialog isOpen={showSaveDialog} onClose={() => setShowSaveDialog(false)} saveOptions={saveOptions} onSaveOptionsChange={setSaveOptions} onSave={handleSave} isSaving={createSlideMutation.isPending} />
+            <div className="flex gap-3 mt-6">
+              <button
+                onClick={() => setShowSaveDialog(false)}
+                className="flex-1 px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleSavePresentation}
+                disabled={createSlideMutation.isPending}
+                className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:bg-blue-400"
+              >
+                {createSlideMutation.isPending ? 'Saving...' : 'Save Presentation'}
+              </button>
+            </div>
+          </div>
         </div>
-    );
+      )}
+      </div>
+    </div>
+  );
 }

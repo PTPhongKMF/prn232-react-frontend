@@ -1,4 +1,3 @@
-// src/App.tsx
 import { Route, Routes } from "react-router";
 import SiteLayout from "./pages/SiteLayout";
 import Home from "./pages/Home";
@@ -19,7 +18,7 @@ import Payment from "src/pages/Payment";
 import MyLibrary from "src/pages/MyLibrary";
 import PaymentMethodsAdmin from "./pages/PaymentMethodsAdmin";
 import TagManagement from "src/pages/TagManagement";
-import Create from "src/pages/Create"; // Giữ import
+import Create from "src/pages/Create";
 import PurchaseHistory from "src/pages/PurchaseHistory";
 
 function App() {
@@ -36,7 +35,6 @@ function App() {
 
   return (
     <Routes>
-      {/* SỬA: TẤT CẢ các route, bao gồm /create, đều nằm trong SiteLayout */}
       <Route element={<SiteLayout />}>
         <Route index element={<Home />} />
         <Route path="explore" element={<Explore />} />
@@ -50,7 +48,6 @@ function App() {
 
         <Route element={<ProtectedRoute allowedRoles={["Teacher", "Admin"]} />}>
           <Route path="questionbank" element={<QuestionBank />} />
-          {/* SỬA: Route /create NẰM TRONG NÀY */}
           <Route path="create" element={<Create />} />
         </Route>
 
