@@ -86,6 +86,21 @@ export default function NavBar() {
                 <BadgeQuestionMark />
                 Question Bank
               </Link>
+              <Link
+      to="/create-exam"
+      className="flex justify-center items-center gap-2 font-medium text-gray-600 transition-colors hover:text-blue-600"
+    >
+      <BookOpenText />
+      Create Exam
+    </Link>
+
+    <Link
+      to="/my-exams"
+      className="flex justify-center items-center gap-2 font-medium text-gray-600 transition-colors hover:text-blue-600"
+    >
+      <BookOpen />
+      My Exams
+    </Link>
             </>
           )}
 
