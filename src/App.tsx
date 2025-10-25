@@ -20,6 +20,10 @@ import PaymentMethodsAdmin from "./pages/PaymentMethodsAdmin";
 import TagManagement from "src/pages/TagManagement";
 import Create from "src/pages/Create";
 import PurchaseHistory from "src/pages/PurchaseHistory";
+import CreateExam from "src/pages/Exams/CreateExam";
+import MyExams from "src/pages/Exams/MyExams";
+import { ToastContainer } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
 
 function App() {
   const user = useUser((s) => s.user);
@@ -34,6 +38,7 @@ function App() {
   }
 
   return (
+      <>
     <Routes>
       <Route element={<SiteLayout />}>
         <Route index element={<Home />} />
@@ -49,6 +54,8 @@ function App() {
         <Route element={<ProtectedRoute allowedRoles={["Teacher", "Admin"]} />}>
           <Route path="questionbank" element={<QuestionBank />} />
           <Route path="create" element={<Create />} />
+          <Route path="create-exam" element={<CreateExam />} />
+          <Route path="my-exams" element={<MyExams />} />
         </Route>
 
         <Route element={<ProtectedRoute allowedRoles={["Admin"]} />}>
@@ -65,6 +72,17 @@ function App() {
         <Route path="test" element={<Test />} />
       </Route>
     </Routes>
+     <ToastContainer
+      position="top-center"
+      autoClose={3000}
+      hideProgressBar={false}
+      newestOnTop={false}
+      closeOnClick
+      pauseOnHover
+      draggable
+      theme="colored"
+    />
+  </>
   );
 }
 
