@@ -4,11 +4,9 @@ import {
   Dialog,
   DialogContent,
   DialogFooter,
-  DialogHeader,
   DialogTitle,
   DialogTrigger,
 } from "src/components/libs/shadcn/dialog";
-import { Input } from "src/components/libs/shadcn/input";
 import { useState } from "react";
 import { type Tag } from "src/types/tag/tag";
 import { cn } from "src/utils/cn";

@@ -2,7 +2,7 @@ import { useProfile, useUpdateProfileMutation, useDeleteAccountMutation } from "
 import { Loader2, User, Mail, Lock, GraduationCap } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Input } from "src/components/libs/shadcn/input";
-import DeleteConfirmationModal from "src/components/DeleteConfirmationModal";
+import GenericDeleteDialog from "src/components/GenericDeleteDialog";
 import { useNavigate } from "react-router";
 import { Cookies } from "typescript-cookie";
 
@@ -69,11 +69,13 @@ export default function Profile() {
 
   return (
     <>
-      <DeleteConfirmationModal
+      <GenericDeleteDialog
         isOpen={isDeleteModalOpen}
         onClose={() => setDeleteModalOpen(false)}
         onConfirm={handleDeleteConfirm}
-        userName={user?.name || ""}
+        title="Delete Account"
+        itemName={user?.name || ""}
+        isLoading={deleteAccountMutation.isPending}
       />
       <div className="flex min-h-[100svh] items-center justify-center bg-amber-50 bg-cover px-4 py-24">
         <div className="flex w-full max-w-lg flex-col gap-8">

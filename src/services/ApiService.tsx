@@ -11,12 +11,12 @@ export const kyAspDotnet = ky.extend({
   hooks: {
     beforeRequest: [
       (request) => {
-        const token = Cookies.get("token");
-
+         const token = Cookies.get("token");
         if (token) {
           request.headers.set("Authorization", `Bearer ${token}`);
         }
       },
     ],
   },
+
 });
