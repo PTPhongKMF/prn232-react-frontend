@@ -39,13 +39,13 @@ export default function NavBar() {
 
   return (
     <header className="fixed top-0 left-0 z-50 w-full bg-amber-100/80 backdrop-blur-sm shadow-sm">
-      <nav className="container mx-auto flex h-12 items-center justify-between px-6">
+      <nav className="container mx-auto text-sm flex h-12 items-center justify-between">
         <Link to="/" className="flex items-center gap-4 text-xl font-bold text-gray-800">
           <img src="/imgs/web-logo.png" className="size-10" />
           <span>Mathslide</span>
         </Link>
 
-        <div className="flex items-center gap-12">
+        <div className="flex items-center gap-10">
           {/* <Link
             to="/slides"
             className="flex justify-center items-center gap-1 font-medium text-gray-600 transition-colors hover:text-blue-600"
@@ -87,20 +87,20 @@ export default function NavBar() {
                 Question Bank
               </Link>
               <Link
-      to="/create-exam"
-      className="flex justify-center items-center gap-2 font-medium text-gray-600 transition-colors hover:text-blue-600"
-    >
-      <BookOpenText />
-      Create Exam
-    </Link>
+                to="/create-exam"
+                className="flex justify-center items-center gap-2 font-medium text-gray-600 transition-colors hover:text-blue-600"
+              >
+                <BookOpenText />
+                Create Exam
+              </Link>
 
-    <Link
-      to="/my-exams"
-      className="flex justify-center items-center gap-2 font-medium text-gray-600 transition-colors hover:text-blue-600"
-    >
-      <BookOpen />
-      My Exams
-    </Link>
+              <Link
+                to="/my-exams"
+                className="flex justify-center items-center gap-2 font-medium text-gray-600 transition-colors hover:text-blue-600"
+              >
+                <BookOpen />
+                My Exams
+              </Link>
             </>
           )}
 
