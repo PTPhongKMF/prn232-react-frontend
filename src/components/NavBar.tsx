@@ -15,6 +15,7 @@ import {
   Tag,
   Plus,
   History,
+  ClipboardCheck,
 } from "lucide-react";
 import { useProfile } from "src/hooks/useAuth";
 import { Cookies } from "typescript-cookie";
@@ -87,20 +88,20 @@ export default function NavBar() {
                 Question Bank
               </Link>
               <Link
-      to="/create-exam"
-      className="flex justify-center items-center gap-2 font-medium text-gray-600 transition-colors hover:text-blue-600"
-    >
-      <BookOpenText />
-      Create Exam
-    </Link>
+                to="/create-exam"
+                className="flex justify-center items-center gap-2 font-medium text-gray-600 transition-colors hover:text-blue-600"
+              >
+                <BookOpenText />
+                Create Exam
+              </Link>
 
-    <Link
-      to="/my-exams"
-      className="flex justify-center items-center gap-2 font-medium text-gray-600 transition-colors hover:text-blue-600"
-    >
-      <BookOpen />
-      My Exams
-    </Link>
+              <Link
+                to="/my-exams"
+                className="flex justify-center items-center gap-2 font-medium text-gray-600 transition-colors hover:text-blue-600"
+              >
+                <BookOpen />
+                My Exams
+              </Link>
             </>
           )}
 
@@ -132,13 +133,23 @@ export default function NavBar() {
           )}
 
           {isSuccess && user?.role === "Student" && (
-            <Link
-              to="/purchase-history"
-              className="flex items-center gap-2 font-medium text-gray-600 transition-colors hover:text-blue-600"
-            >
-              <History size={18} />
-              Purchase History
-            </Link>
+            <>
+              <Link
+                to="/purchase-history"
+                className="flex items-center gap-2 font-medium text-gray-600 transition-colors hover:text-blue-600"
+              >
+                <History size={18} />
+                Purchase History
+              </Link>
+
+              <Link
+                to="/exam-history"
+                className="flex items-center gap-2 font-medium text-gray-600 transition-colors hover:text-blue-600"
+              >
+                <ClipboardCheck size={18} />
+                Exam History
+              </Link>
+            </>
           )}
 
           {isSuccess && user ? (

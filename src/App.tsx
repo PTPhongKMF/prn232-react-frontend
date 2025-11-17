@@ -24,7 +24,8 @@ import CreateExam from "src/pages/Exams/CreateExam";
 import MyExams from "src/pages/Exams/MyExams";
 import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
-
+import TakeExam from "src/pages/Exams/TakeExam";
+import ExamHistory from "src/pages/Exams/ExamHistory";
 function App() {
   const user = useUser((s) => s.user);
   const setUser = useUser((s) => s.setUser);
@@ -48,7 +49,10 @@ function App() {
         <Route path="slides/user/:userId" element={<Slides />} />
         <Route path="/slides" element={<Slides />} />
         <Route path="/exams" element={<Exams />} />
-
+        <Route element={<ProtectedRoute allowedRoles={["Student"]} />}>
+          <Route path="/exams/:examId" element={<TakeExam />} /> 
+          <Route path="/exam-history" element={<ExamHistory />} /> 
+        </Route>
         <Route path="profile" element={<Profile />} />
 
         <Route element={<ProtectedRoute allowedRoles={["Teacher", "Admin"]} />}>
